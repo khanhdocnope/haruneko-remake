@@ -3,6 +3,7 @@ import type { ISyncProvider, SyncSnapshot } from './ISyncProvider';
 import { GistSyncProvider } from './GistSyncProvider';
 import { WebDAVSyncProvider } from './WebDAVSyncProvider';
 import type { ISettings } from '../../SettingsManager';
+import type { Choice, Secret, Text, Check } from '../../SettingsManager';
 
 const SYNC_STORES: Store[] = [Store.Bookmarks, Store.Settings];
 const SYNC_REVISION_KEY = 'hakuneko:sync:revision';
@@ -26,15 +27,15 @@ export class SyncManager {
 
     private GetProviderFromSettings(): ISyncProvider | null {
         try {
-            const providerId = this.settings.Get<{ Value: string }>('sync-provider')?.Value;
+            const providerId = this.settings.Get<Choice>('sync-provider')?.Value;
             if (providerId === 'gist') {
-                const token = this.settings.Get<{ Value: string }>('sync-token')?.Value ?? '';
+                const token = this.settings.Get<Secret>('sync-token')?.Value ?? '';
                 return new GistSyncProvider({ token });
             }
             if (providerId === 'webdav') {
-                const url = this.settings.Get<{ Value: string }>('sync-webdav-url')?.Value ?? '';
-                const user = this.settings.Get<{ Value: string }>('sync-webdav-user')?.Value ?? '';
-                const pass = this.settings.Get<{ Value: string }>('sync-webdav-pass')?.Value ?? '';
+                const url = this.settings.Get<Text>('sync-webdav-url')?.Value ?? '';
+                const user = this.settings.Get<Text>('sync-webdav-user')?.Value ?? '';
+                const pass = this.settings.Get<Secret>('sync-webdav-pass')?.Value ?? '';
                 return new WebDAVSyncProvider({ url, username: user, password: pass });
             }
         } catch { /* no provider configured */ }
@@ -68,7 +69,7 @@ export class SyncManager {
 
         // React to settings changes (provider switch)
         try {
-            this.settings.Get<{ Subscribe: (cb: () => void) => void }>('sync-provider')?.Subscribe(() => {
+            this.settings.Get<Choice>('sync-provider')?.Subscribe(() => {
                 this.provider = this.GetProviderFromSettings();
             });
         } catch { /* ignore */ }
@@ -85,7 +86,7 @@ export class SyncManager {
 
     private SchedulePush(): void {
         if (!this.provider) return;
-        const auto = this.settings.Get<{ Value: boolean }>('sync-auto')?.Value ?? true;
+        const auto = this.settings.Get<Check>('sync-auto')?.Value ?? true;
         if (!auto) {
             localStorage.setItem(SYNC_PENDING_KEY, '1');
             return;

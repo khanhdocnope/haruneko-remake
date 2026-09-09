@@ -83,7 +83,7 @@ export default class extends DecoratableMangaScraper {
     public override async FetchImage(page: Page, priority: Priority, signal: AbortSignal): Promise<Blob> {
         if (page.Link.pathname.startsWith('/api/common/resource/sync')) {
             const { buffer, subBufferSizes } = await this.imageTaskPool.Add(async () => {
-                const response = await Fetch(new Request(page.Link));
+                const response = await fetch(new Request(page.Link));
                 return {
                     buffer: await response.arrayBuffer(),
                     subBufferSizes: response.headers.get('X-Part-Sizes').split(',').map(parseInt),

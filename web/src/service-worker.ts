@@ -182,6 +182,7 @@ function OnMessage(event: ExtendableMessageEvent): void {
 }
 
 // Background Sync for deferred sync queue (Phase 2 SyncManager)
+type SyncEvent = ExtendableEvent & { tag: string };
 function OnSync(event: SyncEvent): void {
     if (event.tag === 'hakuneko-sync') {
         event.waitUntil((async () => {
