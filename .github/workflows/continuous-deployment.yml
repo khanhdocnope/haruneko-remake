@@ -14,6 +14,9 @@ jobs:
   deploy:
     name: Publish Web-Application
     runs-on: ubuntu-latest
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
     steps:
       - name: Starting X Virtual Frame Buffer (Port 99)
         run: |
@@ -46,7 +49,7 @@ jobs:
             npm run build --workspace=app/electron
             npx vitest run --reporter=dot --config=test/vitest.e2e.js "Frontend" --testNamePattern="SmokeTests"
       - name: Deploy App to CloudFlare
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}
         uses: cloudflare/wrangler-action@v4
         env:
           WRANGLER_SEND_METRICS: false
@@ -58,7 +61,7 @@ jobs:
       - name: Build Documentation
         run: npm run build --workspace=docs
       - name: Deploy Docs to CloudFlare
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        if: ${{ env.CLOUDFLARE_API_TOKEN != '' && env.CLOUDFLARE_ACCOUNT_ID != '' }}
         uses: cloudflare/wrangler-action@v4
         env:
           WRANGLER_SEND_METRICS: false
