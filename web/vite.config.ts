@@ -3,7 +3,7 @@ import vue from '@vitejs/plugin-vue';
 import react from '@vitejs/plugin-react';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 
-const buildID = Date.now().toString(36).toUpperCase();
+export const buildID = Date.now().toString(36).toUpperCase();
 
 /**
  * A key for the {@link sslCert}
@@ -74,6 +74,9 @@ export default defineConfig({
         }),
     ],
     publicDir: 'static',
+    define: {
+        BUILD_ID: JSON.stringify(buildID),
+    },
     build: {
         sourcemap: false,
         outDir: 'build',

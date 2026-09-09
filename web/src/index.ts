@@ -16,15 +16,31 @@ declare global {
 }
 
 window.addEventListener('load', async () => {
-    const registrations = await navigator.serviceWorker.getRegistrations();
-    await Promise.allSettled(registrations.map(registration => registration.unregister()));
+    if (!('serviceWorker' in navigator)) return;
     const urlServiceWorker = new URL(import.meta.env.DEV ? './service-worker.ts' : '/sw.js', import.meta.url);
-    const registration = await navigator.serviceWorker.register(urlServiceWorker, { scope: '/' });
-    registration.addEventListener('updatefound', () => {
-        const activeServiceWorker = registration.active;
-        // Reload application as soon as the active servcie-worker was replaced by the updated service-worker
-        activeServiceWorker?.addEventListener('statechange', () => activeServiceWorker.state === 'redundant' ? window.location.reload() : null);
-    });
+    try {
+        const registration = await navigator.serviceWorker.register(urlServiceWorker, { scope: '/' });
+        // PWA update flow: notify when new SW is waiting, let UI decide to activate
+        registration.addEventListener('updatefound', () => {
+            const installing = registration.installing;
+            installing?.addEventListener('statechange', () => {
+                if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+                    window.dispatchEvent(new CustomEvent('hakuneko:sw-update-ready'));
+                }
+            });
+        });
+        // Listen for controller change to reload only once when user accepts update
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
+        });
+        // Periodic update check (every hour)
+        setInterval(() => registration.update().catch(() => {}), 60 * 60 * 1000);
+    } catch (e) {
+        console.warn('[PWA] SW registration failed', e);
+    }
 });
 
 function ShowErrorNotice(root: HTMLElement, error?: Error) {

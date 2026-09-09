@@ -6,7 +6,10 @@ export const enum Store {
     Itemflags = 'Itemflags',
     TagManager = 'CustomTags',
     MediaLists = 'MediaLists',
+    DownloadedMedia = 'DownloadedMedia',
 }
+
+export type StorageWatchCallback = (store: Store, key?: string) => void;
 
 export interface StorageController {
     SavePersistent<T>(value: T, store: Store, key?: string): Promise<void>;
@@ -15,6 +18,8 @@ export interface StorageController {
     SaveTemporary<T>(value: T): Promise<string>;
     LoadTemporary<T>(key: string): Promise<T>;
     RemoveTemporary(...keys: string[]): Promise<void>;
+    Watch?(callback: StorageWatchCallback): () => void;
+    GetRevision?(store: Store): Promise<number>;
 }
 
 export function CreateStorageController(): StorageController {

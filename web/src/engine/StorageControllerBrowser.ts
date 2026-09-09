@@ -1,4 +1,4 @@
-import { type StorageController, Store } from './StorageController';
+import { type StorageController, Store, type StorageWatchCallback } from './StorageController';
 
 const DataBase = 'HakuNeko';
 
@@ -29,6 +29,12 @@ const VersionUpgrades = [
     function V5(db: IDBDatabase) {
         db.createObjectStore(Store.Itemflags);
     },
+    // V5 => V6
+    function V6(db: IDBDatabase) {
+        if (!db.objectStoreNames.contains(Store.DownloadedMedia)) {
+            db.createObjectStore(Store.DownloadedMedia);
+        }
+    },
 ];
 
 const Version = VersionUpgrades.length;
@@ -39,8 +45,27 @@ const Version = VersionUpgrades.length;
  */
 export class StorageControllerBrowser implements StorageController {
 
+    private readonly watchers = new Set<StorageWatchCallback>();
+    private revisions = new Map<Store, number>();
+
     constructor() {
         navigator.storage.persist().catch(console.warn);
+    }
+
+    public Watch(callback: StorageWatchCallback): () => void {
+        this.watchers.add(callback);
+        return () => this.watchers.delete(callback);
+    }
+
+    public async GetRevision(store: Store): Promise<number> {
+        return this.revisions.get(store) ?? 0;
+    }
+
+    private NotifyWatchers(store: Store, key?: string): void {
+        this.revisions.set(store, (this.revisions.get(store) ?? 0) + 1);
+        for (const cb of this.watchers) {
+            try { cb(store, key); } catch { /* ignore */ }
+        }
     }
 
     private async Connect(): Promise<IDBDatabase> {
@@ -100,27 +125,17 @@ export class StorageControllerBrowser implements StorageController {
     }
 
     public async SavePersistent<T>(value: T, store: Store, key?: string): Promise<void> {
-        //console.warn('StorageController.SavePersistent()', '=>', 'Not fully implemented!');
-        // May instead use: https://developer.chrome.com/docs/extensions/reference/storage/
-        //                  chrome.storage.local.set({ key: data }, () => {});
-        //return localStorage.setItem(`${store}.${key}`, JSON.stringify(value));
-        return this.SaveIDB(value, store, key);
+        await this.SaveIDB(value, store, key);
+        this.NotifyWatchers(store, key);
     }
 
     public async LoadPersistent<T>(store: Store, key?: string): Promise<T> {
-        //console.warn('StorageController.LoadPersistent()', '=>', 'Not fully implemented!');
-        // May instead use: https://developer.chrome.com/docs/extensions/reference/storage/
-        //                  chrome.storage.local.get(key, data => data[key]);
-        //return JSON.parse(localStorage.getItem(`${store}.${key}`)) as T;
         return this.LoadIDB(store, key);
     }
 
     public async RemovePersistent(store: Store, ...keys: string[]): Promise<void> {
-        //console.warn('StorageController.RemovePersistent()', '=>', 'Not fully implemented!');
-        // May instead use: https://developer.chrome.com/docs/extensions/reference/storage/
-        //                  chrome.storage.local.remove(key, () => {});
-        //return localStorage.removeItem(`${store}.${key}`);
-        return this.RemoveIDB(store, ...keys);
+        await this.RemoveIDB(store, ...keys);
+        this.NotifyWatchers(store, keys[0]);
     }
 
     public async SaveTemporary<T>(value: T): Promise<string> {

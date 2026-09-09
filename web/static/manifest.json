@@ -1,0 +1,22 @@
+{
+    "name": "HakuNeko - Manga, Anime & Novel Downloader",
+    "short_name": "HakuNeko",
+    "description": "Manga, Anime & Novel Downloader - find your favorite content and read offline",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "display_override": ["window-controls-overlay", "standalone", "browser"],
+    "background_color": "#ffffff",
+    "theme_color": "#ff1c5c",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "/favicon.ico",
+            "sizes": "64x64",
+            "type": "image/x-icon"
+        }
+    ],
+    "categories": ["books", "entertainment"],
+    "lang": "en",
+    "dir": "ltr"
+}

@@ -6,14 +6,78 @@ import { Exception } from './Error';
 
 //const secret = 'E8463362D9B817D3956F054D01093EC6'; // MD5('simple.encryption.key.for.secret.settings')
 
+/**
+ * AES-GCM encryption for Secret settings.
+ * Uses a derived key from a fixed app salt + passphrase.
+ * Falls back to btoa/atob for migration / when crypto unavailable.
+ */
+const SYNC_CRYPTO_SALT = 'hakuneko-sync-salt-v1';
+const SYNC_CRYPTO_IV_LEN = 12;
+
+async function DeriveKey(passphrase: string): Promise<CryptoKey> {
+    const enc = new TextEncoder();
+    const baseKey = await crypto.subtle.importKey('raw', enc.encode(passphrase || 'HakuNeko-Default-Secret-Key'), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+        { name: 'PBKDF2', salt: enc.encode(SYNC_CRYPTO_SALT), iterations: 100000, hash: 'SHA-256' },
+        baseKey,
+        { name: 'AES-GCM', length: 256 },
+        false,
+        ['encrypt', 'decrypt']
+    );
+}
+
+async function EncryptAESGCM(plain: string, passphrase: string): Promise<string> {
+    try {
+        const key = await DeriveKey(passphrase);
+        const iv = crypto.getRandomValues(new Uint8Array(SYNC_CRYPTO_IV_LEN));
+        const enc = new TextEncoder();
+        const cipher = await crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, enc.encode(plain));
+        const combined = new Uint8Array(iv.length + cipher.byteLength);
+        combined.set(iv, 0);
+        combined.set(new Uint8Array(cipher), iv.length);
+        return 'v1:' + btoa(String.fromCharCode(...combined));
+    } catch {
+        return btoa(plain);
+    }
+}
+
+async function DecryptAESGCM(encrypted: string, passphrase: string): Promise<string> {
+    try {
+        if (!encrypted.startsWith('v1:')) return atob(encrypted);
+        const raw = encrypted.slice(3);
+        const bytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0));
+        const iv = bytes.slice(0, SYNC_CRYPTO_IV_LEN);
+        const data = bytes.slice(SYNC_CRYPTO_IV_LEN);
+        const key = await DeriveKey(passphrase);
+        const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
+        return new TextDecoder().decode(plain);
+    } catch {
+        try { return atob(encrypted); } catch { return encrypted; }
+    }
+}
+
 function Encrypt(decrypted: string) {
-    // TODO: Use some real encryption 😉
+    // Sync path: encryption is async, so Secret falls back to btoa for sync Serialize.
+    // Async encryption is handled via EncryptSecretAsync helper.
     return btoa(decrypted);
 }
 
 function Decrypt(encrypted: string) {
-    // TODO: Use some real decryption 😉
+    if (encrypted.startsWith('v1:')) {
+        // Cannot decrypt sync without passphrase here; return as-is for lazy decrypt
+        return encrypted;
+    }
     return atob(encrypted);
+}
+
+export async function EncryptSecretAsync(plain: string, passphrase?: string): Promise<string> {
+    if (passphrase) return EncryptAESGCM(plain, passphrase);
+    return btoa(plain);
+}
+
+export async function DecryptSecretAsync(encrypted: string, passphrase?: string): Promise<string> {
+    if (encrypted.startsWith('v1:')) return DecryptAESGCM(encrypted, passphrase ?? '');
+    try { return atob(encrypted); } catch { return encrypted; }
 }
 
 export type IValue = string | boolean | number | FileSystemDirectoryHandle;
@@ -74,11 +138,24 @@ export class Secret extends Setting<string> {
     }
 
     public override Deserialize(serialized: string): void {
-        super.Value = Decrypt(serialized);
+        // Support both legacy btoa and v1 AES-GCM; async decrypt will be done lazily if needed
+        try {
+            super.Value = Decrypt(serialized);
+        } catch {
+            super.Value = serialized;
+        }
     }
 
     public override Serialize(): string {
         return Encrypt(super.Value);
+    }
+
+    public async DeserializeAsync(encrypted: string, passphrase?: string): Promise<void> {
+        super.Value = await DecryptSecretAsync(encrypted, passphrase);
+    }
+
+    public async SerializeAsync(passphrase?: string): Promise<string> {
+        return EncryptSecretAsync(super.Value, passphrase);
     }
 }
 

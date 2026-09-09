@@ -14,6 +14,7 @@ import { CreateRemoteProcedureCallManager } from './platform/RemoteProcedureCall
 import { CreateRemoteProcedureCallContract } from './platform/RemoteProcedureCallContract';
 import type { IFrontendInfo } from '../frontend/IFrontend';
 import { Observable } from './Observable';
+import { SyncManager } from './platform/Sync/SyncManager';
 
 export class HakuNeko {
 
@@ -24,6 +25,7 @@ export class HakuNeko {
     readonly #bookmarkPlugin: BookmarkPlugin;
     readonly #itemflagManager: ItemflagManager;
     readonly #downloadManager: DownloadManager;
+    readonly #syncManager: SyncManager;
     readonly #pastedClipboardURL = new Observable<URL>(null);
 
     constructor() {
@@ -34,6 +36,7 @@ export class HakuNeko {
         this.#bookmarkPlugin = new BookmarkPlugin(this.#storageController, this.#pluginController, new InteractiveFileContentProvider());
         this.#itemflagManager = new ItemflagManager(this.#storageController);
         this.#downloadManager = new DownloadManager(this.#storageController);
+        this.#syncManager = new SyncManager(this.#storageController, this.#settingsManager.OpenScope());
         SetupFetchProvider(this.#featureFlags);
     }
 
@@ -43,6 +46,8 @@ export class HakuNeko {
         await InitGlobalSettings(this.SettingsManager, frontends);
         CreateRemoteProcedureCallManager(this.#settingsManager);
         CreateRemoteProcedureCallContract();
+        // Initialize cloud sync (non-blocking, failures are non-fatal)
+        this.#syncManager.Initialize().catch(e => console.warn('[HakuNeko] Sync init failed', e));
         // Preload bookmarks flags to show content to view
         const checkNewContent = this.SettingsManager.OpenScope().Get<Check>(GlobalKey.CheckNewContent).Value ;
         if (checkNewContent) this.BookmarkPlugin.RefreshAllFlags();
@@ -75,6 +80,10 @@ export class HakuNeko {
 
     public get DownloadManager(): DownloadManager {
         return this.#downloadManager;
+    }
+
+    public get SyncManager(): SyncManager {
+        return this.#syncManager;
     }
 
     public get PastedClipboardURL(): Observable<URL> {

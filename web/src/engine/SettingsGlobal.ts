@@ -23,6 +23,15 @@ export const enum Key {
     RPCEnabled = 'RPCEnabled',
     RPCPort = 'RPCPort',
     RPCSecret = 'RPCSecret',
+    SyncProvider = 'sync-provider',
+    SyncToken = 'sync-token',
+    SyncWebDAVUrl = 'sync-webdav-url',
+    SyncWebDAVUser = 'sync-webdav-user',
+    SyncWebDAVPass = 'sync-webdav-pass',
+    SyncAuto = 'sync-auto',
+    SyncInterval = 'sync-interval',
+    SyncEncryption = 'sync-encryption',
+    SyncPassphrase = 'sync-passphrase',
 }
 
 export async function Initialize(settingsManager: SettingsManager, frontends: IFrontendInfo[]): Promise<void> {
@@ -124,6 +133,63 @@ export async function Initialize(settingsManager: SettingsManager, frontends: IF
             R.Settings_Global_RPCSecret,
             R.Settings_Global_RPCSecretInfo,
             'Connection#Secret'
+        ),
+        new Choice(
+            Key.SyncProvider,
+            R.Settings_Global_SyncProvider,
+            R.Settings_Global_SyncProviderInfo,
+            'none',
+            { key: 'none', label: R.Settings_Global_SyncProvider_None },
+            { key: 'gist', label: R.Settings_Global_SyncProvider_Gist },
+            { key: 'webdav', label: R.Settings_Global_SyncProvider_WebDAV },
+        ),
+        new Secret(
+            Key.SyncToken,
+            R.Settings_Global_SyncToken,
+            R.Settings_Global_SyncTokenInfo,
+            ''
+        ),
+        new Text(
+            Key.SyncWebDAVUrl,
+            R.Settings_Global_SyncWebDAVUrl,
+            R.Settings_Global_SyncWebDAVUrlInfo,
+            ''
+        ),
+        new Text(
+            Key.SyncWebDAVUser,
+            R.Settings_Global_SyncWebDAVUser,
+            R.Settings_Global_SyncWebDAVUserInfo,
+            ''
+        ),
+        new Secret(
+            Key.SyncWebDAVPass,
+            R.Settings_Global_SyncWebDAVPass,
+            R.Settings_Global_SyncWebDAVPassInfo,
+            ''
+        ),
+        new Check(
+            Key.SyncAuto,
+            R.Settings_Global_SyncAuto,
+            R.Settings_Global_SyncAutoInfo,
+            true
+        ),
+        new Numeric(
+            Key.SyncInterval,
+            R.Settings_Global_SyncInterval,
+            R.Settings_Global_SyncIntervalInfo,
+            300, 60, 3600
+        ),
+        new Check(
+            Key.SyncEncryption,
+            R.Settings_Global_SyncEncryption,
+            R.Settings_Global_SyncEncryptionInfo,
+            false
+        ),
+        new Secret(
+            Key.SyncPassphrase,
+            R.Settings_Global_SyncPassphrase,
+            R.Settings_Global_SyncPassphraseInfo,
+            ''
         ),
     );
 }
