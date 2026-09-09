@@ -1,0 +1,207 @@
+import { Chapter, DecoratableMangaScraper, type MangaPlugin, type Manga, Page } from '../../providers/MangaPlugin';
+import * as Common from '../decorators/Common';
+import { FetchWindowScript, Fetch, FetchJSON, } from '../../platform/FetchProvider';
+import { Priority } from '../../taskpool/DeferredTask';
+import DeScramble from '../../transformers/ImageDescrambler';
+import { TaskPool } from '../../taskpool/TaskPool';
+import { RateLimit } from '../../taskpool/RateLimit';
+
+type APIChapters = {
+    result: {
+        episodeList: {
+            episodeTitle: string;
+            viewerLink: string;
+            episodeNo: number;
+        }[];
+    };
+};
+
+type PageData = {
+    width: number;
+    height: number;
+    layers: ImageLayer[];
+    background: {
+        image: string;
+        color: string;
+    };
+};
+
+type ImageLayer = {
+    type: string;
+    asset: string;
+    width: number;
+    height: number;
+    left: number;
+    top: number;
+};
+
+@Common.MangasNotSupported()
+export class LineWebtoonBase extends DecoratableMangaScraper {
+
+    private mangaRegexp = /[a-z]{2}\/[^/]+\/[^/]+\/list\?title_no=\d+$/;
+    private queryManga = 'head meta[property="og:title"]';
+    protected readonly interactionTaskPool = new TaskPool(1, RateLimit.PerMinute(30));
+
+    public WithMangaRegex(regex: RegExp): LineWebtoonBase {
+        this.mangaRegexp = regex;
+        return this;
+    }
+
+    public WithMangaTitleCSS(query: string): LineWebtoonBase {
+        this.queryManga = query;
+        return this;
+    }
+
+    public override ValidateMangaURL(url: string): boolean {
+        return this.mangaRegexp.test(url) && url.startsWith(this.URI.origin);
+    }
+
+    public override async FetchManga(provider: MangaPlugin, url: string): Promise<Manga> {
+        return this.interactionTaskPool.Add(async () => Common.FetchMangaCSS.call(this, provider, url, this.queryManga, Common.WebsiteInfoExtractor({ includeSearch: true })), Priority.Normal);
+    }
+
+    public override async FetchChapters(manga: Manga): Promise<Chapter[]> {
+        const titleId = new URL(manga.Identifier, this.URI).searchParams.get('title_no');
+        const [, language, type] = manga.Identifier.split('/');
+        const requestURL = new URL(`./api/v1/${type === 'canvas' ? type : 'webtoon'}/${titleId}/episodes?pageSize=99999`, 'https://m.webtoons.com');
+        if (type == 'canvas') requestURL.searchParams.set('readingLanguageCode', language);
+
+        const { result: { episodeList } } = await this.interactionTaskPool.Add(() => FetchJSON<APIChapters>(new Request(requestURL, {
+            headers: {
+                Referer: 'https://m.webtoons.com/'
+            }
+        })), Priority.Normal);
+        return episodeList
+            .sort((self, other) => other.episodeNo - self.episodeNo)
+            .map(({ viewerLink, episodeTitle }) => new Chapter(this, manga, viewerLink, episodeTitle));
+    }
+
+    public override async FetchPages(chapter: Chapter): Promise<Page[]> {
+        const data = await this.interactionTaskPool.Add(async () => FetchWindowScript(new Request(new URL(chapter.Identifier, this.URI)), `
+            new Promise(async (resolve, reject) => {
+                try {
+                    // Process motion webtoon
+                    if (document.querySelector('div#ozViewer div.oz-pages')) {
+                        const templateURLs = window.__motiontoonViewerState__.motiontoonParam.pathRuleParam;
+                        const uri = window.__motiontoonViewerState__.motiontoonParam.viewerOptions.documentURL;
+                        const response = await fetch(uri);
+                        const data = await response.json();
+                        for (const page of data.pages) {
+                            for (const layer of page.layers) {
+                                const layerAsset = layer.asset.split('/');
+                                const layerAssetFile = data.assets[layerAsset[0]][layerAsset[1]];
+                                const layerAssetExtension = layerAssetFile.split('.').pop();
+                                if (layer.type === 'image') {
+                                    layer.asset = templateURLs['image'][layerAssetExtension].replace('{=filename}', layerAssetFile);
+                                }
+                                for (const keyframe in layer.effects) {
+                                    const effect = layer.effects[keyframe]['sprite'];
+                                    if (effect && effect.type === 'sprite') {
+                                        const effectAsset = effect.asset.split('/');
+                                        const effectAssetFile = data.assets[effectAsset[0]][effectAsset[1]];
+                                        const effectAssetExtension = effectAssetFile.split('.').pop();
+                                        effect.asset = templateURLs['image'][effectAssetExtension].replace('{=filename}', effectAssetFile);
+                                        for (const index in effect.collection) {
+                                            const collectionAsset = effect.collection[index].split('/');
+                                            const collectionAssetFile = data.assets[collectionAsset[0]][collectionAsset[1]];
+                                            const collectionAssetExtension = collectionAssetFile.split('.').pop();
+                                            effect.collection[index] = templateURLs['image'][collectionAssetExtension].replace('{=filename}', collectionAssetFile);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        resolve(data.pages);
+                    } else {
+                    // Process hard-sub webtoon (default)
+                        const images = [...document.querySelectorAll('div.viewer div.viewer_lst div.viewer_img img[data-url]')];
+                        const links = images.map(element => new URL(element.dataset.url, window.location).href);
+                        resolve(links);
+                    }
+                } catch (error) {
+                    reject(error);
+                }
+            });
+
+        `, 1500), Priority.Normal);
+        if (!Array.isArray(data)) return [];
+        return typeof data[0] === 'string' ? (data as Array<string>).map(page => {
+            const pageUrl = new URL(page);
+            pageUrl.searchParams.delete('type');
+            return new Page(this, chapter, pageUrl);
+        }) : (data as PageData[]).map(page => new Page<PageData>(this, chapter, new URL(this.URI), { Referer: this.URI.href, ...page }));
+    }
+
+    public override async FetchImage(page: Page<PageData>, priority: Priority, signal: AbortSignal): Promise<Blob> {
+        return page.Parameters?.layers ? this.imageTaskPool.Add(async () => {
+            const { layers, width, background, height } = page.Parameters;
+            return DeScramble(new ImageData(width, height,), async (_, ctx) => {
+                ctx.canvas.width = width;
+                ctx.canvas.height = height;
+
+                if (background.image) {
+                    const image = await this.LoadImage(background.image);
+                    ctx.canvas.width = image.width;
+                    ctx.canvas.height = image.height;
+                    ctx.drawImage(image, 0, 0);
+                    image.close();
+                }
+                if (background.color) {
+                    ctx.fillStyle = background.color;
+                    ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                }
+                for (const layer of layers) {
+                    const type = layer.type.split('|');
+                    if (type[0] === 'image') {
+                        const image = await this.LoadImage(layer.asset);
+                        if (type[1] === 'text') {
+                            AdjustTextLayerVisibility(layer, image.width, image.height, ctx.canvas.width, ctx.canvas.height);
+                        }
+                        // TODO: process layer.keyframes in case top/left/width/height is animated?
+                        ctx.drawImage(image, layer.left, layer.top, layer.width || image.width, layer.height || image.height);
+                        image.close();
+                    }
+                }
+            });
+        }, priority, signal) : this.interactionTaskPool.Add(async () => Common.FetchImageAjax.call(this, page, priority, signal, true), Priority.Normal);
+    }
+
+    async LoadImage(url: string): Promise<ImageBitmap> {
+        const uri = new URL(url);
+        uri.searchParams.delete('type');
+        const response = await Fetch(new Request(uri, {
+            headers: {
+                Referer: this.URI.href
+            }
+        }));
+        const blob = await response.blob();
+        return await createImageBitmap(blob);
+    }
+}
+
+function AdjustTextLayerVisibility(layer: ImageLayer, textLayerWidth: number, textLayerHeight: number, canvasWidth: number, canvasHeight: number) {
+    if (textLayerHeight > canvasHeight) {
+        layer.top = 0;
+        layer.height = canvasHeight;
+        layer.width = layer.width * canvasHeight / textLayerHeight;
+    } else {
+        if (layer.top + textLayerHeight > canvasHeight) {
+            layer.top = canvasHeight - textLayerHeight;
+        }
+        if (layer.top < 0) {
+            layer.top = 0;
+        }
+    }
+    if (textLayerWidth > canvasWidth) {
+        layer.left = 0;
+        layer.width = canvasWidth;
+        layer.height = layer.height * canvasWidth / textLayerWidth;
+    } else {
+        if (layer.left + textLayerWidth > canvasWidth) {
+            layer.left = canvasWidth - textLayerWidth;
+        }
+        if (layer.left < 0) {
+            layer.left = 0;
+        }
+    }
+}

@@ -1,0 +1,22 @@
+import { TestFixture } from '../../../test/WebsitesFixture';
+
+new TestFixture( {
+    plugin: {
+        id: 'agcscanlation',
+        title: 'AGCScanlation'
+    },
+    container: {
+        url: 'http://www.agcscanlation.it/progetto.php?nome=Arifureta2',
+        id: '/progetto.php?nome=Arifureta2',
+        title: 'Arifureta Nichijou de Sekai Saikyou'
+    },
+    child: {
+        id: '/readerr.php?nome=Arifureta2&numcap=1&nomecompleto=Arifureta%20Nichijou%20de%20Sekai%20Saikyou',
+        title: 'Capitolo 1'
+    },
+    entry: {
+        index: 0,
+        size: 188_488,
+        type: 'image/jpeg'
+    }
+}).AssertWebsite();

@@ -1,0 +1,24 @@
+﻿import { TestFixture } from '../../../test/WebsitesFixture';
+
+const mangaID = encodeURI('/manga/呪術廻戦-raw-free/').toLowerCase();
+new TestFixture({
+    plugin: {
+        id: 'mangarawac',
+        title: 'MangaRawAC'
+    },
+    container: {
+        url: 'https://mangaraw.ac' + mangaID,
+        id: mangaID,
+        title: '呪術廻戦'
+    },
+    child: {
+        id: mangaID + encodeURI('第1話/'),
+        title: '第1話',
+        timeout: 10_000
+    },
+    entry: {
+        index: 4,
+        size: 630_963,
+        type: 'image/png'
+    }
+}).AssertWebsite();

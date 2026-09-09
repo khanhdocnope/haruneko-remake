@@ -1,0 +1,146 @@
+import { Tags } from '../Tags';
+import icon from './ShueishaMangaPlus.webp';
+import { Chapter, DecoratableMangaScraper, Manga, type MangaPlugin, Page } from '../providers/MangaPlugin';
+import * as Common from './decorators/Common';
+import protoTypes from './ShueishaMangaPlus.proto?raw';
+import { FetchProto, FetchWindowScript } from '../platform/FetchProvider';
+import type { Priority } from '../taskpool/DeferredTask';
+import { GetBytesFromHex } from '../BufferEncoder';
+import { DecryptXOR } from '../Crypto';
+import { GetTypedData } from './decorators/Common';
+
+type MangaPlusResponse = {
+    success: {
+        titleDetailView: TitleDetailView;
+        allTitlesViewV2: AllTitlesViewV2;
+        mangaViewer: MangaViewer;
+    }
+};
+
+type AllTitlesViewV2 = {
+    alltitlegroups: AllTitlesGroup[];
+};
+
+type AllTitlesGroup = {
+    thetitle: string;
+    titles: Title[];
+};
+
+type Title = {
+    titleId: number;
+    name: string;
+    language: number;
+};
+
+type TitleDetailView = {
+    title: Title;
+    chapterListGroup: ChapterGroup[];
+};
+
+type ChapterGroup = {
+    firstChapterList: APIChapter[];
+    midChapterList: APIChapter[];
+    lastChapterList: APIChapter[];
+};
+
+type APIChapter = {
+    chapterId: number;
+    name: string;
+    subTitle: string;
+};
+
+type MangaViewer = {
+    pages: MangaPage[];
+};
+
+type MangaPage = {
+    mangaPage: {
+        imageUrl: string;
+        encryptionKey: string;
+    }
+};
+
+type PageData = {
+    encryptionKey: string;
+};
+
+export default class extends DecoratableMangaScraper {
+    private readonly apiURL = 'https://jumpg-webapi.tokyo-cdn.com/api/';
+    private token = '';
+
+    public constructor() {
+        super('shueishamangaplus', `MANGA Plus by Shueisha`, 'https://mangaplus.shueisha.co.jp', Tags.Media.Manga, Tags.Language.Spanish, Tags.Language.French, Tags.Language.Indonesian, Tags.Language.Portuguese, Tags.Language.Russian, Tags.Language.Thai, Tags.Language.Vietnamese, Tags.Language.German, Tags.Source.Official, Tags.Accessibility.RegionLocked);
+    }
+
+    public override get Icon() {
+        return icon;
+    }
+
+    public override async Initialize(): Promise<void> {
+        // TODO: Update the token whenever the user performs a login/logout through manual website interaction
+        this.token = await FetchWindowScript<string>(new Request(this.URI), `localStorage.getItem('SESSION_ID_KEY') || null;`, 750);
+    }
+
+    private GetLanguage(language: number): string {
+        const languages = {
+            0: ['en'], 1: '[es]', 2: '[fr]', 3: '[id]', 4: '[pt-br]', 5: '[ru]', 6: '[th]', 7: '[de]', 8: '[unk]', 9: '[vi]'
+        };
+        return languages[language] || '[en]';
+    }
+
+    public override ValidateMangaURL(url: string): boolean {
+        return new RegExpSafe(`^${this.URI.origin}/titles/\\d+$`).test(url);
+    }
+
+    public override async FetchManga(provider: MangaPlugin, url: string): Promise<Manga> {
+        const titleId = url.match(/\/titles\/(\d+)/).at(1);
+        const { success: { titleDetailView: { title: { name, language } } } } = await this.FetchAPI<MangaPlusResponse>(`./title_detailV3?title_id=${titleId}`, protoTypes, 'MangaPlus.Response');
+        return new Manga(this, provider, titleId, `${name} ${this.GetLanguage(language)}`);
+    }
+
+    public override async FetchMangas(provider: MangaPlugin): Promise<Manga[]> {
+        const mangalist: Manga[] = [];
+        const { success: { allTitlesViewV2: { alltitlegroups } } } = await this.FetchAPI<MangaPlusResponse>('./title_list/allV2', protoTypes, 'MangaPlus.Response');
+        for (const group of alltitlegroups) {
+            mangalist.push(...group.titles.map(({ name, titleId, language }) => new Manga(this, provider, `${titleId}`, `${name} ${this.GetLanguage(language)}`)));
+        }
+        return mangalist;
+    }
+
+    public override async FetchChapters(manga: Manga): Promise<Chapter[]> {
+        const { success: { titleDetailView: { chapterListGroup } } } = await this.FetchAPI<MangaPlusResponse>(`./title_detailV3?title_id=${manga.Identifier}`, protoTypes, 'MangaPlus.Response');
+        const chaptersList: Chapter[] = chapterListGroup.reduce((accumulator: Chapter[], entry) => {
+            const chapters = [...entry.firstChapterList || [],
+                ...entry.midChapterList || [],
+                ...entry.lastChapterList || [],
+            ].map(({ chapterId, subTitle, name }) => new Chapter(this, manga, `${chapterId}`, subTitle || name));
+            accumulator.push(...chapters);
+            return accumulator;
+        }, []);
+        return chaptersList;
+    }
+
+    public override async FetchPages(chapter: Chapter): Promise<Page<PageData>[]> {
+        const { success: { mangaViewer: { pages } } } = await this.FetchAPI<MangaPlusResponse>(`./manga_viewer?chapter_id=${chapter.Identifier}&img_quality=super_high&split=yes`, protoTypes, 'MangaPlus.Response');
+        return pages ? pages
+            .filter(page => page.mangaPage)
+            .map(({ mangaPage: { imageUrl, encryptionKey } }) => new Page<PageData>(this, chapter, new URL(imageUrl), { encryptionKey })) : [];
+    }
+
+    public override async FetchImage(page: Page<PageData>, priority: Priority, signal: AbortSignal): Promise<Blob> {
+        const blob = await Common.FetchImageAjax.call(this, page, priority, signal);
+        return !page.Parameters.encryptionKey ? blob : this.DecryptImage(blob, page.Parameters.encryptionKey);
+    }
+
+    private async DecryptImage(blob: Blob, key: string): Promise<Blob> {
+        return GetTypedData(DecryptXOR(new Uint8Array(await blob.arrayBuffer()), new Uint8Array(GetBytesFromHex(key))).buffer);
+    }
+
+    private async FetchAPI<T extends JSONElement>(endpoint: string, schema: string, message: string): Promise<T> {
+        return FetchProto<T>(new Request(new URL(endpoint, this.apiURL), {
+            headers: {
+                'SESSION-TOKEN': this.token
+            }
+        }), schema, message);
+    }
+}

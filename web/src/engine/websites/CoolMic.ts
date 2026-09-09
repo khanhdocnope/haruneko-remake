@@ -1,0 +1,165 @@
+import { Tags } from '../Tags';
+import icon from './CoolMic.webp';
+import type { MangaPlugin } from '../providers/MangaPlugin';
+import { Chapter, DecoratableMangaScraper, Page, Manga } from '../providers/MangaPlugin';
+import * as Common from './decorators/Common';
+import { FetchCSS, FetchJSON, FetchWindowScript } from '../platform/FetchProvider';
+import type { Priority } from '../taskpool/DeferredTask';
+import { GetBytesFromBase64, GetBytesFromUTF8 } from '../BufferEncoder';
+import { GetTypedData } from './decorators/Common';
+
+type APIMangas = {
+    hits: {
+        hit: {
+            id: number;
+            fields: {
+                title_name: string;
+            }
+        }[]
+    }
+};
+
+type JsonChapters = {
+    episodes: {
+        id: number;
+        number: string;
+    }[]
+};
+
+type APIPages = {
+    image_data?: {
+        path: string
+    }[];
+};
+
+type PageData = {
+    encrypted_image: string;
+    iv: string;
+    salt: string;
+    iterations: number;
+    kms_encrypted_data_key: string;
+    file_name: string;
+};
+
+type DecryptedKey = {
+    decrypted_key: string;
+};
+
+const tokenAndMatureCookieScript = `
+    new Promise(async (resolve, reject) => {
+        try {
+            await window.cookieStore.set('is_mature', 'true');
+            resolve(document.querySelector('meta[name="csrf-token"]').content);
+        } catch(error) {
+            reject(error);
+        }
+    });
+`;
+
+@Common.MangaCSS(/^{origin}\/titles\/\d+$/, 'meta[property="og:title"]')
+export default class extends DecoratableMangaScraper {
+    protected readonly apiUrl = `${this.URI.origin}/api/v1/`;
+    private token: string = undefined;
+
+    public constructor() {
+        super('coolmic', 'CoolMic', 'https://coolmic.me', Tags.Media.Manhwa, Tags.Media.Manga, Tags.Language.English, Tags.Source.Official, Tags.Accessibility.RegionLocked);
+    }
+
+    public override get Icon() {
+        return icon;
+    }
+
+    public override async Initialize(): Promise<void> {
+        this.token = await FetchWindowScript<string>(new Request(this.URI), tokenAndMatureCookieScript);
+    }
+
+    public override async FetchMangas(provider: MangaPlugin): Promise<Manga[]> {
+        const promises = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(character => {
+            const url = new URL(`https://en-search.coolmic.me/search`);
+            const params = new URLSearchParams({
+                q: `(${character}|*${character})`,
+                size: '10000',
+                start: '0',
+                'q.parser': 'simple',
+                return: '_all_fields',
+                sort: '_score desc, like_vote_count desc',
+                fq: ''
+            });
+
+            url.search = params.toString();
+            return this.FetchAPI<APIMangas>(url.href);
+        });
+
+        const results = (await Promise.all(promises)).reduce((accumulator: Manga[], element) => {
+            const mangas = element.hits.hit.map(({ id, fields: { title_name: title } }) => new Manga(this, provider, `/titles/${id}`, title.trim()));
+            accumulator.push(...mangas);
+            return accumulator;
+        }, []);
+
+        return results.distinct();
+    }
+
+    public override async FetchChapters(manga: Manga): Promise<Chapter[]> {
+        const [jsonNode] = await FetchCSS(new Request(new URL(manga.Identifier, this.URI)), '[\\:page-objects]');
+        const { episodes } = JSON.parse(jsonNode.getAttribute(':page-objects')) as JsonChapters;
+        return episodes.map(({ id, number }) => new Chapter(this, manga, `${id}`, number.trim()));
+    }
+
+    public override async FetchPages(chapter: Chapter): Promise<Page[]> {
+        const { image_data } = await this.FetchAPI<APIPages>(`./viewer/comic/secure_episodes/${chapter.Identifier}`);
+        return image_data.map(({ path }) => new Page(this, chapter, new URL(path)));
+    }
+
+    public override async FetchImage(page: Page, priority: Priority, signal: AbortSignal): Promise<Blob> {
+        return this.imageTaskPool.Add(async () => {
+
+            //fetch page JSON data
+            const pageData = await FetchJSON<PageData>(new Request(page.Link, {
+                headers: {
+                    Referer: this.URI.href
+                }
+            }));
+
+            //get decrypted key
+            const chapterUrl = new URL(page.Parent.Identifier, this.URI).href;
+            const { decrypted_key } = await this.FetchAPI<DecryptedKey>(`./decryption_keys`, { encrypted_key: pageData.kms_encrypted_data_key, file_name: pageData.file_name }, chapterUrl);
+            return GetTypedData(await this.Decrypt(pageData, decrypted_key));
+
+        }, priority, signal);
+    }
+
+    private async Decrypt(pageData: PageData, decryptedKey: string): Promise<ArrayBuffer> {
+
+        const { encrypted_image, iterations, iv, salt } = pageData;
+        //create decryptionKey
+        const derivableKey = await crypto.subtle.importKey('raw', GetBytesFromUTF8(decryptedKey), {
+            name: 'PBKDF2'
+        }, false, ['deriveKey']);
+
+        const decryptionKey = await crypto.subtle.deriveKey({
+            name: 'PBKDF2',
+            salt: GetBytesFromBase64(salt),
+            iterations,
+            hash: 'SHA-256'
+        }, derivableKey, { name: 'AES-CBC', length: 256 }, false, ['decrypt']);
+
+        //decrypt picture
+        return crypto.subtle.decrypt({ name: 'AES-CBC', iv: GetBytesFromBase64(iv) }, decryptionKey, GetBytesFromBase64(encrypted_image));
+    }
+
+    private async FetchAPI<T extends JSONElement>(endpoint: string, body: JSONElement = undefined, referer: string = undefined): Promise<T> {
+        const request = new Request(new URL(endpoint, this.apiUrl), {
+            method: body ? 'POST' : 'GET',
+            headers: {
+                Origin: this.URI.origin,
+                'Content-type': 'application/json',
+                'X-CSRF-TOKEN': this.token,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: body ? JSON.stringify(body) : undefined
+
+        });
+        if (referer) request.headers.set('Referer', referer);
+        return FetchJSON<T>(request);
+    }
+}

@@ -1,0 +1,22 @@
+﻿import { TestFixture } from '../../../test/WebsitesFixture';
+
+new TestFixture({
+    plugin: {
+        id: 'manhwadashraw',
+        title: 'Manhwa-Raw'
+    },
+    container: {
+        url: 'https://manhwa-raw.com/manga/sisters-taste-raw/',
+        id: '/manga/sisters-taste-raw/',
+        title: `Sister’s Taste`
+    },
+    child: {
+        id: '/manga/sisters-taste-raw/chapter-8/',
+        title: 'Chapter 8'
+    },
+    entry: {
+        index: 0,
+        size: 272_956,
+        type: 'image/webp'
+    }
+}).AssertWebsite();

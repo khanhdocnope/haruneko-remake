@@ -1,0 +1,22 @@
+﻿import { TestFixture } from '../../../test/WebsitesFixture';
+
+new TestFixture({
+    plugin: {
+        id: 'portalyaoi',
+        title: 'Portal Yaoi'
+    },
+    container: {
+        url: 'https://portalyaoi.com/manga/love-shuttle/',
+        id: JSON.stringify({ slug: '/manga/love-shuttle/' }),
+        title: 'Love Shuttle'
+    },
+    child: {
+        id: '/manga/love-shuttle/side-story-06/',
+        title: 'Side Story 06'
+    },
+    entry: {
+        index: 1,
+        size: 664_223,
+        type: 'image/jpeg'
+    }
+}).AssertWebsite();

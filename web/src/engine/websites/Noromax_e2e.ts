@@ -1,0 +1,22 @@
+﻿import { TestFixture } from '../../../test/WebsitesFixture';
+
+new TestFixture({
+    plugin: {
+        id: 'noromax',
+        title: 'Noromax'
+    },
+    container: {
+        url: 'https://noromax02.my.id/manga/all-hail-the-sect-leader-bahasa-indonesia/',
+        id: '/manga/all-hail-the-sect-leader-bahasa-indonesia/',
+        title: 'All Hail the Sect Leader'
+    },
+    child: {
+        id: '/all-hail-the-sect-leader-chapter-01-bahasa-indonesia/',
+        title: 'Chapter 01'
+    },
+    entry: {
+        index: 0,
+        size: 225_081,
+        type: 'image/jpeg'
+    }
+}).AssertWebsite();

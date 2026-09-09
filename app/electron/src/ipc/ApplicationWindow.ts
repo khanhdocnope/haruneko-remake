@@ -1,0 +1,55 @@
+import { BrowserWindow } from 'electron';
+import type { IPC } from './InterProcessCommunication';
+import { Channels } from './InterProcessCommunicationChannels';
+
+export class ApplicationWindow extends BrowserWindow {
+
+    private splash?: BrowserWindow = undefined;
+
+    public async RegisterChannels(ipc: IPC) {
+        // TODO: Prevent duplicate registrations
+        ipc.Handle(Channels.ApplicationWindow.ShowWindow, super.show.bind(this));
+        ipc.Handle(Channels.ApplicationWindow.HideWindow, super.hide.bind(this));
+        ipc.Handle(Channels.ApplicationWindow.Minimize, super.minimize.bind(this));
+        ipc.Handle(Channels.ApplicationWindow.Maximize, super.maximize.bind(this));
+        ipc.Handle(Channels.ApplicationWindow.Restore, super.restore.bind(this));
+        ipc.Handle(Channels.ApplicationWindow.Close, super.close.bind(this));
+        ipc.Handle(Channels.ApplicationWindow.OpenSplash, this.OpenSplash.bind(this));
+        ipc.Handle(Channels.ApplicationWindow.CloseSplash, this.CloseSplash.bind(this));
+    }
+
+    private async Restore() {
+        if (super.isMinimized()) super.restore();
+        if (super.isMaximized()) super.unmaximize();
+    }
+
+    private async OpenSplash(url: string) {
+        if(!this.splash) {
+            this.splash = new BrowserWindow({
+                width: 416,
+                height: 520,
+                center: true,
+                frame: false,
+                transparent: true,
+                webPreferences: {
+                    webSecurity: true,
+                    nodeIntegration: false,
+                    contextIsolation: true,
+                    allowRunningInsecureContent: false,
+                },
+            });
+            this.splash.on('closed', () => {
+                this.splash = undefined;
+                super.show();
+            });
+            this.splash.removeMenu();
+            this.splash.setMenu(null);
+            this.splash.setMenuBarVisibility(false);
+        }
+        return this.splash?.loadURL(url);
+    }
+
+    private async CloseSplash() {
+        return this.splash?.close();
+    }
+}

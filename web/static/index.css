@@ -1,0 +1,307 @@
+@font-face {
+    font-family: NotoColorEmoji-Flags;
+    unicode-range: U+1F1E6-1F1FF, U+1F3F4;                   /* Only use the flag emojis from this font by limiting the unicode range */
+    src: url('/NotoColorEmoji-Flags.woff2') format('woff2'); /* Created With: https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&text=🇦🇫🇦🇱🇩🇿🇦🇩🇦🇴🇦🇬🇦🇷🇦🇲🇦🇺🇦🇹🇦🇿🇧🇸🇧🇭🇧🇩🇧🇧🇧🇾🇧🇪🇧🇿🇧🇯🇧🇹🇧🇴🇧🇦🇧🇼🇧🇷🇧🇳🇧🇬🇧🇫🇧🇮🇨🇻🇰🇭🇨🇲🇨🇦🇨🇫🇹🇩🇨🇱🇨🇴🇰🇲🇨🇩🇨🇷🇨🇮🇭🇷🇨🇺🇨🇾🇨🇿🇰🇵🇨🇬🇩🇰🇩🇯🇩🇲🇩🇴🇪🇨🇪🇬🇸🇻🇬🇶🇪🇷🇪🇪🇸🇿🇪🇹🇫🇯🇫🇮🇫🇷🇬🇦🇬🇲🇬🇪🇩🇪🇬🇭🇬🇷🇬🇩🇬🇹🇬🇳🇬🇼🇬🇾🇭🇹🇭🇳🇭🇺🇮🇸🇮🇳🇮🇩🇮🇷🇮🇶🇮🇪🇮🇱🇮🇹🇯🇲🇯🇵🇯🇴🇰🇿🇰🇪🇰🇮🇰🇼🇰🇬🇱🇦🇱🇻🇱🇧🇱🇸🇱🇷🇱🇾🇱🇮🇱🇹🇱🇺🇲🇬🇲🇼🇲🇾🇲🇻🇲🇱🇲🇹🇲🇭🇲🇷🇲🇺🇲🇽🇫🇲🇲🇨🇲🇳🇲🇪🇲🇦🇲🇿🇲🇲🇳🇦🇳🇷🇳🇵🇳🇱🇳🇿🇳🇮🇳🇪🇳🇬🇲🇰🇳🇴🇴🇲🇵🇰🇵🇼🇵🇦🇵🇬🇵🇾🇵🇪🇵🇭🇵🇱🇵🇹🇶🇦🇰🇷🇲🇩🇷🇴🇷🇺🇷🇼🇰🇳🇱🇨🇻🇨🇼🇸🇸🇲🇸🇹🇸🇦🇸🇳🇷🇸🇸🇨🇸🇱🇸🇬🇸🇰🇸🇮🇸🇧🇸🇴🇿🇦🇸🇸🇪🇸🇱🇰🇸🇩🇸🇷🇸🇪🇨🇭🇸🇾🇹🇯🇹🇭🇹🇱🇹🇬🇹🇴🇹🇹🇹🇳🇹🇷🇹🇲🇹🇻🇺🇬🇺🇦🇦🇪🇬🇧🇹🇿🇺🇸🇺🇾🇺🇿🇻🇺🇻🇪🇻🇳🇾🇪🇿🇲🇿🇼🇪🇺🏴‍☠️🏳️‍🌈🏳️🏴 */
+}
+
+html, body, #app, #hakuneko-notice {
+    font-family: NotoColorEmoji-Flags, -apple-system, BlinkMacSystemFont, 'Segoe UI Variable', 'Segoe UI', Tahoma, Roboto, Verdana, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    position: fixed;
+    overflow: hidden;
+}
+
+#windowbar {
+    padding: 0.25em;
+    text-align: right;
+    background: whitesmoke;
+    -webkit-app-region: drag;
+}
+
+#windowbar > a {
+    padding: 0.25em;
+    cursor: pointer;
+    font-size: 125%;
+    font-weight: bold;
+    text-decoration: none;
+    -webkit-app-region: no-drag;
+}
+
+#hakuneko-notice {
+    text-align: center;
+    background: lightgrey;
+}
+
+#hakuneko-notice a {
+    text-decoration: none;
+}
+
+.container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: row;
+    margin: 0 auto;
+    width: 50%;
+}
+
+.center {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+@keyframes rotate {
+    0% {
+        transform: rotateX(-37.5deg) rotateY(45deg);
+    }
+
+    50% {
+        transform: rotateX(-37.5deg) rotateY(405deg);
+    }
+
+    100% {
+        transform: rotateX(-37.5deg) rotateY(405deg);
+    }
+}
+
+.cube,
+.cube * {
+    position: absolute;
+    width: 151px;
+    height: 151px;
+}
+
+.sides {
+    animation: rotate 3s ease infinite;
+    animation-delay: 0.8s;
+    transform-style: preserve-3d;
+    transform: rotateX(-37.5deg) rotateY(45deg);
+}
+
+.cube .sides * {
+    box-sizing: border-box;
+    background-color: #ff1c5c;
+    border: 15px solid white;
+}
+
+.cube .sides .top {
+    animation: top-animation 3s ease infinite;
+    animation-delay: 0ms;
+    transform: rotateX(90deg) translateZ(150px);
+    animation-fill-mode: forwards;
+    transform-origin: 50% 50%;
+}
+
+@keyframes top-animation {
+    0% {
+        opacity: 0.5;
+        transform: rotateX(90deg) translateZ(150px);
+    }
+
+    20% {
+        opacity: 0.5;
+        transform: rotateX(90deg) translateZ(75px);
+    }
+
+    70% {
+        opacity: 0.5;
+        transform: rotateX(90deg) translateZ(75px);
+    }
+
+    90% {
+        opacity: 0.5;
+        transform: rotateX(90deg) translateZ(150px);
+    }
+
+    100% {
+        opacity: 0.5;
+        transform: rotateX(90deg) translateZ(150px);
+    }
+}
+
+.cube .sides .bottom {
+    animation: bottom-animation 3s ease infinite;
+    animation-delay: 0ms;
+    transform: rotateX(-90deg) translateZ(150px);
+    animation-fill-mode: forwards;
+    transform-origin: 50% 50%;
+}
+
+@keyframes bottom-animation {
+    0% {
+        opacity: 0.5;
+        transform: rotateX(-90deg) translateZ(150px);
+    }
+
+    20% {
+        opacity: 0.5;
+        transform: rotateX(-90deg) translateZ(75px);
+    }
+
+    70% {
+        opacity: 0.5;
+        transform: rotateX(-90deg) translateZ(75px);
+    }
+
+    90% {
+        opacity: 0.5;
+        transform: rotateX(-90deg) translateZ(150px);
+    }
+
+    100% {
+        opacity: 0.5;
+        transform: rotateX(-90deg) translateZ(150px);
+    }
+}
+
+.cube .sides .front {
+    animation: front-animation 3s ease infinite;
+    animation-delay: 100ms;
+    transform: rotateY(0deg) translateZ(150px);
+    animation-fill-mode: forwards;
+    transform-origin: 50% 50%;
+}
+
+@keyframes front-animation {
+    0% {
+        opacity: 0.5;
+        transform: rotateY(0deg) translateZ(150px);
+    }
+
+    20% {
+        opacity: 0.5;
+        transform: rotateY(0deg) translateZ(75px);
+    }
+
+    70% {
+        opacity: 0.5;
+        transform: rotateY(0deg) translateZ(75px);
+    }
+
+    90% {
+        opacity: 0.5;
+        transform: rotateY(0deg) translateZ(150px);
+    }
+
+    100% {
+        opacity: 0.5;
+        transform: rotateY(0deg) translateZ(150px);
+    }
+}
+
+.cube .sides .back {
+    animation: back-animation 3s ease infinite;
+    animation-delay: 100ms;
+    transform: rotateY(-180deg) translateZ(150px);
+    animation-fill-mode: forwards;
+    transform-origin: 50% 50%;
+}
+
+@keyframes back-animation {
+    0% {
+        opacity: 0.5;
+        transform: rotateY(-180deg) translateZ(150px);
+    }
+
+    20% {
+        opacity: 0.5;
+        transform: rotateY(-180deg) translateZ(75px);
+    }
+
+    70% {
+        opacity: 0.5;
+        transform: rotateY(-180deg) translateZ(75px);
+    }
+
+    90% {
+        opacity: 0.5;
+        transform: rotateY(-180deg) translateZ(150px);
+    }
+
+    100% {
+        opacity: 0.5;
+        transform: rotateY(-180deg) translateZ(150px);
+    }
+}
+
+.cube .sides .left {
+    animation: left-animation 3s ease infinite;
+    animation-delay: 100ms;
+    transform: rotateY(-90deg) translateZ(150px);
+    animation-fill-mode: forwards;
+    transform-origin: 50% 50%;
+}
+
+@keyframes left-animation {
+    0% {
+        opacity: 0.5;
+        transform: rotateY(-90deg) translateZ(150px);
+    }
+
+    20% {
+        opacity: 0.5;
+        transform: rotateY(-90deg) translateZ(75px);
+    }
+
+    70% {
+        opacity: 0.5;
+        transform: rotateY(-90deg) translateZ(75px);
+    }
+
+    90% {
+        opacity: 0.5;
+        transform: rotateY(-90deg) translateZ(150px);
+    }
+
+    100% {
+        opacity: 0.5;
+        transform: rotateY(-90deg) translateZ(150px);
+    }
+}
+
+.cube .sides .right {
+    animation: right-animation 3s ease infinite;
+    animation-delay: 100ms;
+    transform: rotateY(90deg) translateZ(150px);
+    animation-fill-mode: forwards;
+    transform-origin: 50% 50%;
+}
+
+@keyframes right-animation {
+    0% {
+        opacity: 0.5;
+        transform: rotateY(90deg) translateZ(150px);
+    }
+
+    20% {
+        opacity: 0.5;
+        transform: rotateY(90deg) translateZ(75px);
+    }
+
+    70% {
+        opacity: 0.5;
+        transform: rotateY(90deg) translateZ(75px);
+    }
+
+    90% {
+        opacity: 0.5;
+        transform: rotateY(90deg) translateZ(150px);
+    }
+
+    100% {
+        opacity: 0.5;
+        transform: rotateY(90deg) translateZ(150px);
+    }
+}
+
+.text {
+    margin-top: 400px;
+    font-size: 1rem;
+    width: 100%;
+    font-weight: 600;
+    text-align: center;
+}
