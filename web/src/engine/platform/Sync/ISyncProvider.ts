@@ -10,7 +10,7 @@ export type SyncSnapshot = {
 export interface ISyncProvider {
     readonly id: string;
     readonly label: string;
-    pull(): Promise<SyncSnapshot | null>;
-    push(snapshot: SyncSnapshot): Promise<void>;
-    test(): Promise<boolean>;
+    Pull(): Promise<SyncSnapshot | null>;
+    Push(snapshot: SyncSnapshot): Promise<void>;
+    Test(): Promise<boolean>;
 }

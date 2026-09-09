@@ -17,7 +17,7 @@ export class WebDAVSyncProvider implements ISyncProvider {
 
     constructor(private readonly options: WebDAVSyncOptions) {}
 
-    private get headers(): Record<string, string> {
+    private get Headers(): Record<string, string> {
         const h: Record<string, string> = {};
         if (this.options.username && this.options.password) {
             h['Authorization'] = `Basic ${btoa(`${this.options.username}:${this.options.password}`)}`;
@@ -25,10 +25,10 @@ export class WebDAVSyncProvider implements ISyncProvider {
         return h;
     }
 
-    public async test(): Promise<boolean> {
+    public async Test(): Promise<boolean> {
         if (!this.options.url) return false;
         try {
-            const res = await fetch(this.options.url, { method: 'HEAD', headers: this.headers });
+            const res = await fetch(this.options.url, { method: 'HEAD', headers: this.Headers });
             // 404 is also reachable (empty yet)
             return res.ok || res.status === 404;
         } catch {
@@ -36,8 +36,8 @@ export class WebDAVSyncProvider implements ISyncProvider {
         }
     }
 
-    public async pull(): Promise<SyncSnapshot | null> {
-        const res = await fetch(this.options.url, { headers: this.headers });
+    public async Pull(): Promise<SyncSnapshot | null> {
+        const res = await fetch(this.options.url, { headers: this.Headers });
         if (res.status === 404) return null;
         if (!res.ok) throw new Error(`WebDAV pull failed: ${res.status}`);
         try {
@@ -47,10 +47,10 @@ export class WebDAVSyncProvider implements ISyncProvider {
         }
     }
 
-    public async push(snapshot: SyncSnapshot): Promise<void> {
+    public async Push(snapshot: SyncSnapshot): Promise<void> {
         const res = await fetch(this.options.url, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json', ...this.headers },
+            headers: { 'Content-Type': 'application/json', ...this.Headers },
             body: JSON.stringify(snapshot, null, 2),
         });
         if (!res.ok) throw new Error(`WebDAV push failed: ${res.status} ${await res.text()}`);

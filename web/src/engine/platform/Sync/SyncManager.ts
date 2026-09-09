@@ -105,10 +105,10 @@ export class SyncManager {
         this.status = 'syncing';
         try {
             const localSnapshot = await this.BuildLocalSnapshot();
-            const remoteSnapshot = await this.provider.pull();
+            const remoteSnapshot = await this.provider.Pull();
 
             if (!remoteSnapshot) {
-                await this.provider.push(localSnapshot);
+                await this.provider.Push(localSnapshot);
                 this.SetLocalRevision(localSnapshot.revision);
                 this.status = 'idle';
                 return { pushed: true, pulled: false, conflicts: 0 };
@@ -128,7 +128,7 @@ export class SyncManager {
             if (newLocal.revision > remoteSnapshot.revision || conflicts > 0 || localStorage.getItem(SYNC_PENDING_KEY)) {
                 newLocal.revision = Math.max(newLocal.revision, remoteSnapshot.revision) + 1;
                 newLocal.timestamp = Date.now();
-                await this.provider.push(newLocal);
+                await this.provider.Push(newLocal);
                 this.SetLocalRevision(newLocal.revision);
                 localStorage.removeItem(SYNC_PENDING_KEY);
                 this.status = 'idle';
@@ -212,13 +212,13 @@ export class SyncManager {
     public async ForcePush(): Promise<void> {
         const snap = await this.BuildLocalSnapshot();
         if (!this.provider) throw new Error('No sync provider configured');
-        await this.provider.push(snap);
+        await this.provider.Push(snap);
         this.SetLocalRevision(snap.revision);
     }
 
     public async ForcePull(): Promise<void> {
         if (!this.provider) throw new Error('No sync provider configured');
-        const remote = await this.provider.pull();
+        const remote = await this.provider.Pull();
         if (remote) {
             const local = await this.BuildLocalSnapshot();
             await this.MergeRemoteToLocal(remote, local);

@@ -26,28 +26,28 @@ export class GistSyncProvider implements ISyncProvider {
 
     constructor(private readonly options: GistSyncOptions) {}
 
-    private get authHeader(): Record<string, string> {
+    private get AuthHeader(): Record<string, string> {
         return this.options.token ? { Authorization: `Bearer ${this.options.token}` } : {};
     }
 
-    private get gistId(): string | undefined {
+    private get GistId(): string | undefined {
         return this.options.gistId || localStorage.getItem('hakuneko:sync:gistId') || undefined;
     }
 
-    private set gistId(value: string | undefined) {
+    private set GistId(value: string | undefined) {
         if (value) localStorage.setItem('hakuneko:sync:gistId', value);
     }
 
-    public async test(): Promise<boolean> {
+    public async Test(): Promise<boolean> {
         if (!this.options.token) return false;
-        const res = await fetch('https://api.github.com/user', { headers: this.authHeader });
+        const res = await fetch('https://api.github.com/user', { headers: this.AuthHeader });
         return res.ok;
     }
 
-    public async pull(): Promise<SyncSnapshot | null> {
-        const id = this.gistId;
+    public async Pull(): Promise<SyncSnapshot | null> {
+        const id = this.GistId;
         if (!id) return null;
-        const res = await fetch(`https://api.github.com/gists/${id}`, { headers: this.authHeader });
+        const res = await fetch(`https://api.github.com/gists/${id}`, { headers: this.AuthHeader });
         if (!res.ok) return null;
         const gist = await res.json() as GistResponse;
         const file = gist.files[GIST_FILENAME];
@@ -59,29 +59,29 @@ export class GistSyncProvider implements ISyncProvider {
         }
     }
 
-    public async push(snapshot: SyncSnapshot): Promise<void> {
+    public async Push(snapshot: SyncSnapshot): Promise<void> {
         const content = JSON.stringify(snapshot, null, 2);
         const body: Record<string, unknown> = {
             files: { [GIST_FILENAME]: { content } },
         };
 
-        const id = this.gistId;
+        const id = this.GistId;
         if (id) {
             const res = await fetch(`https://api.github.com/gists/${id}`, {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'application/json', ...this.authHeader },
+                headers: { 'Content-Type': 'application/json', ...this.AuthHeader },
                 body: JSON.stringify(body),
             });
             if (!res.ok) throw new Error(`Gist push failed: ${res.status} ${await res.text()}`);
         } else {
             const res = await fetch('https://api.github.com/gists', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', ...this.authHeader },
+                headers: { 'Content-Type': 'application/json', ...this.AuthHeader },
                 body: JSON.stringify({ description: GIST_DESCRIPTION, public: false, ...body }),
             });
             if (!res.ok) throw new Error(`Gist create failed: ${res.status} ${await res.text()}`);
             const gist = await res.json() as GistResponse;
-            this.gistId = gist.id;
+            this.GistId = gist.id;
         }
     }
 }

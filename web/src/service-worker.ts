@@ -81,7 +81,7 @@ async function StaleWhileRevalidate(request: Request, cache: Cache): Promise<Res
         PutSafe(cache, request, res);
         return res;
     }).catch(() => undefined);
-    return hit ?? (await fetchPromise) ?? new Response('Offline', { status: 503 });
+    return hit ?? await fetchPromise ?? new Response('Offline', { status: 503 });
 }
 
 async function NetworkFirst(request: Request, cache: Cache, timeoutMs = 3000): Promise<Response> {
