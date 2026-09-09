@@ -1,0 +1,45 @@
+name: Build EXE (Windows)
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build-exe:
+    name: Build Windows EXE
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24.0.0
+
+      - name: Install NPM Packages
+        run: npm run npm:clean-install
+
+      - name: Code Inspection
+        run: npm run check --workspace=web --workspace=app/electron
+
+      - name: Build Web
+        run: npm run build --workspace=web
+
+      - name: Build Electron
+        run: npm run bundle --workspace=app/electron
+
+      - name: List Bundle
+        run: Get-ChildItem -Recurse app/electron/bundle | Format-Table Name,Length
+        shell: pwsh
+
+      - name: Upload EXE Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hakuneko-windows-exe
+          retention-days: 7
+          path: app/electron/bundle/*.zip
+          if-no-files-found: error
