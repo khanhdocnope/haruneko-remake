@@ -2,6 +2,7 @@ import { Runtime } from './PlatformInfo';
 import { PlatformInstanceActivator } from './PlatformInstanceActivator';
 import NodeWebkitAppWindow from './nw/AppWindow';
 import ElectronAppWindow from './electron/AppWindow';
+import BrowserAppWindow from './browser/AppWindow';
 import { GetLocale } from '../../i18n/Localization';
 import type { IObservable } from '../Observable';
 
@@ -26,6 +27,10 @@ export function CreateAppWindow(splashURL: string): IAppWindow {
     return new PlatformInstanceActivator<IAppWindow>()
         .Configure(Runtime.NodeWebkit, () => new NodeWebkitAppWindow(nw.Window.get(), splashURL))
         .Configure(Runtime.Electron, () => new ElectronAppWindow(splashURL))
+        .Configure(Runtime.Chrome, () => new BrowserAppWindow(splashURL))
+        .Configure(Runtime.Gecko, () => new BrowserAppWindow(splashURL))
+        .Configure(Runtime.WebKit, () => new BrowserAppWindow(splashURL))
+        .Configure(Runtime.Unknown, () => new BrowserAppWindow(splashURL))
         .Create();
 }
 
