@@ -4,6 +4,7 @@ import { Runtime } from './PlatformInfo';
 import { PlatformInstanceActivator } from './PlatformInstanceActivator';
 import NodeWebkitFetchProvider from './nw/FetchProvider';
 import ElectronFetchProvider from './electron/FetchProvider';
+import BrowserFetchProvider from './browser/FetchProvider';
 
 let instance: FetchProvider;
 
@@ -11,6 +12,10 @@ export function SetupFetchProvider(featureFlags: FeatureFlags) {
     instance = new PlatformInstanceActivator<FetchProvider>()
         .Configure(Runtime.NodeWebkit, () => new NodeWebkitFetchProvider())
         .Configure(Runtime.Electron, () => new ElectronFetchProvider())
+        .Configure(Runtime.Chrome, () => new BrowserFetchProvider())
+        .Configure(Runtime.Gecko, () => new BrowserFetchProvider())
+        .Configure(Runtime.WebKit, () => new BrowserFetchProvider())
+        .Configure(Runtime.Unknown, () => new BrowserFetchProvider())
         .Create();
     instance.Initialize(featureFlags);
 }

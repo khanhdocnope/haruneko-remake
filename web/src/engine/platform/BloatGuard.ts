@@ -2,6 +2,7 @@ import { Runtime } from './PlatformInfo';
 import { PlatformInstanceActivator } from './PlatformInstanceActivator';
 import NodeWebkitBloatGuard from './nw/BloatGuard';
 import ElectronBloatGuard from './electron/BloatGuard';
+import BrowserBloatGuard from './browser/BloatGuard';
 
 export interface IBloatGuard {
     Initialize(): Promise<void>;
@@ -11,6 +12,10 @@ export function CreateBloatGuard(): IBloatGuard {
     return new PlatformInstanceActivator<IBloatGuard>()
         .Configure(Runtime.NodeWebkit, () => new NodeWebkitBloatGuard(patterns))
         .Configure(Runtime.Electron, () => new ElectronBloatGuard(patterns))
+        .Configure(Runtime.Chrome, () => new BrowserBloatGuard())
+        .Configure(Runtime.Gecko, () => new BrowserBloatGuard())
+        .Configure(Runtime.WebKit, () => new BrowserBloatGuard())
+        .Configure(Runtime.Unknown, () => new BrowserBloatGuard())
         .Create();
 }
 
