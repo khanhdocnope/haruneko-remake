@@ -1,5 +1,6 @@
 import path from 'path';
 import fs from 'fs/promises';
+import { pathToFileURL } from 'node:url';
 import { app } from 'electron';
 import { Command } from 'commander';
 import { IPC } from './ipc/InterProcessCommunication';
@@ -105,7 +106,16 @@ async function OpenWindow(): Promise<void> {
         app.userAgentFallback = manifest['user-agent'] ?? app.userAgentFallback.split(/\s+/).filter(segment => !/(hakuneko|electron)/i.test(segment)).join(' ');
         await app.whenReady();
         const win = await CreateApplicationWindow();
-        const uri = new URL(argv.origin ?? manifest.url ?? 'about:blank');
+        let origin = argv.origin ?? manifest.url;
+        // Offline bundle: if web/index.html exists locally, prefer file:// (đủ thay đổi như web)
+        if (!argv.origin) {
+            const localWeb = path.join(app.getAppPath(), 'web', 'index.html');
+            try {
+                await fs.access(localWeb);
+                origin = pathToFileURL(localWeb).href;
+            } catch { /* use manifest url */ }
+        }
+        const uri = new URL(origin ?? 'about:blank');
         UpdatePermissions(win.webContents.session, uri);
 
         const ipc = new IPC(win.webContents);

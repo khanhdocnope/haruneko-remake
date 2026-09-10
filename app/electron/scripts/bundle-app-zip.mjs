@@ -11,6 +11,7 @@ const pkgConfig = JSON.parse(await fs.readFile(pkgFile));
  */
 export async function bundle(blinkApplicationSourceDirectory, blinkApplicationResourcesDirectory, blinkDeploymentTemporaryDirectory, blinkDeploymentOutputDirectory) {
     await bundleApp(blinkApplicationSourceDirectory, blinkDeploymentTemporaryDirectory);
+    await bundleWeb(blinkDeploymentTemporaryDirectory);
     await makePortable(blinkDeploymentTemporaryDirectory);
     await updateBinary(blinkApplicationResourcesDirectory, blinkDeploymentTemporaryDirectory);
     // TODO: include ffmpeg
@@ -22,6 +23,18 @@ export async function bundle(blinkApplicationSourceDirectory, blinkApplicationRe
 async function bundleApp(blinkApplicationSourceDirectory, blinkDeploymentTemporaryDirectory) {
     const target = path.join(blinkDeploymentTemporaryDirectory, 'resources', 'app');
     await fs.cp(blinkApplicationSourceDirectory, target, { recursive: true });
+}
+
+async function bundleWeb(blinkDeploymentTemporaryDirectory) {
+    const webBuild = path.resolve('..', '..', 'web', 'build');
+    const targetWeb = path.join(blinkDeploymentTemporaryDirectory, 'resources', 'app', 'web');
+    try {
+        await fs.access(webBuild);
+        await fs.cp(webBuild, targetWeb, { recursive: true });
+        console.log('Bundled web/build -> resources/app/web');
+    } catch {
+        console.warn('web/build not found, skipping offline bundle (run npm run build --workspace=web first)');
+    }
 }
 
 async function makePortable(blinkDeploymentTemporaryDirectory) {
