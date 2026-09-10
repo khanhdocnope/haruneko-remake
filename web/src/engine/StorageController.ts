@@ -8,6 +8,7 @@ export const enum Store {
     MediaLists = 'MediaLists',
     DownloadedMedia = 'DownloadedMedia',
     TranslationCache = 'TranslationCache',
+    ImageOCRCache = 'ImageOCRCache',
 }
 
 export type StorageWatchCallback = (store: Store, key?: string) => void;

@@ -15,7 +15,7 @@ import { CreateRemoteProcedureCallContract } from './platform/RemoteProcedureCal
 import type { IFrontendInfo } from '../frontend/IFrontend';
 import { Observable } from './Observable';
 import { SyncManager } from './platform/Sync/SyncManager';
-import { AITranslator } from './platform/AI/AITranslator';
+import { TranslationOrchestrator } from './platform/AI/TranslationOrchestrator';
 
 export class HakuNeko {
 
@@ -27,7 +27,8 @@ export class HakuNeko {
     readonly #itemflagManager: ItemflagManager;
     readonly #downloadManager: DownloadManager;
     readonly #syncManager: SyncManager;
-    readonly #aiTranslator: AITranslator;
+    readonly #aiTranslator: TranslationOrchestrator;
+    readonly #translationOrchestrator: TranslationOrchestrator;
     readonly #pastedClipboardURL = new Observable<URL>(null);
 
     constructor() {
@@ -39,7 +40,8 @@ export class HakuNeko {
         this.#itemflagManager = new ItemflagManager(this.#storageController);
         this.#downloadManager = new DownloadManager(this.#storageController);
         this.#syncManager = new SyncManager(this.#storageController, this.#settingsManager.OpenScope());
-        this.#aiTranslator = new AITranslator(this.#storageController, this.#settingsManager.OpenScope());
+        this.#translationOrchestrator = new TranslationOrchestrator(this.#storageController, this.#settingsManager.OpenScope());
+        this.#aiTranslator = this.#translationOrchestrator;
         SetupFetchProvider(this.#featureFlags);
     }
 
@@ -89,8 +91,12 @@ export class HakuNeko {
         return this.#syncManager;
     }
 
-    public get AITranslator(): AITranslator {
+    public get AITranslator(): TranslationOrchestrator {
         return this.#aiTranslator;
+    }
+
+    public get TranslationOrchestrator(): TranslationOrchestrator {
+        return this.#translationOrchestrator;
     }
 
     public get PastedClipboardURL(): Observable<URL> {

@@ -358,6 +358,18 @@ export enum EngineResourceKey {
     Settings_Global_AIAutoTranslate = 'Settings_Global_AIAutoTranslate',
     Settings_Global_AIAutoTranslateInfo = 'Settings_Global_AIAutoTranslateInfo',
 
+    Settings_Global_OCRProvider = 'Settings_Global_OCRProvider',
+    Settings_Global_OCRProviderInfo = 'Settings_Global_OCRProviderInfo',
+    Settings_Global_OCRProvider_None = 'Settings_Global_OCRProvider_None',
+    Settings_Global_OCRProvider_Tesseract = 'Settings_Global_OCRProvider_Tesseract',
+    Settings_Global_OCRProvider_OpenAIVision = 'Settings_Global_OCRProvider_OpenAIVision',
+    Settings_Global_OCRProvider_GeminiVision = 'Settings_Global_OCRProvider_GeminiVision',
+    Settings_Global_OCRProvider_GoogleVision = 'Settings_Global_OCRProvider_GoogleVision',
+    Settings_Global_OCRLanguage = 'Settings_Global_OCRLanguage',
+    Settings_Global_OCRLanguageInfo = 'Settings_Global_OCRLanguageInfo',
+    Settings_Global_OCROverlay = 'Settings_Global_OCROverlay',
+    Settings_Global_OCROverlayInfo = 'Settings_Global_OCROverlayInfo',
+
     Settings_FeatureFlags_Label = 'Settings_FeatureFlags_Label',
     Settings_FeatureFlags_Description = 'Settings_FeatureFlags_Description',
     Settings_FeatureFlags_ShowSplashScreen_Label = 'Settings_FeatureFlags_ShowSplashScreen_Label',

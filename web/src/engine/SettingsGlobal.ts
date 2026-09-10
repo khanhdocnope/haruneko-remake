@@ -37,6 +37,9 @@ export const enum Key {
     AIKey = 'ai-key',
     AITargetLanguage = 'ai-target-language',
     AIAutoTranslate = 'ai-autotranslate',
+    OCRProvider = 'ocr-provider',
+    OCRLanguage = 'ocr-language',
+    OCROverlay = 'ocr-overlay',
 }
 
 export async function Initialize(settingsManager: SettingsManager, frontends: IFrontendInfo[]): Promise<void> {
@@ -232,6 +235,35 @@ export async function Initialize(settingsManager: SettingsManager, frontends: IF
             R.Settings_Global_AIAutoTranslate,
             R.Settings_Global_AIAutoTranslateInfo,
             false
+        ),
+        new Choice(
+            Key.OCRProvider,
+            R.Settings_Global_OCRProvider,
+            R.Settings_Global_OCRProviderInfo,
+            'none',
+            { key: 'none', label: R.Settings_Global_OCRProvider_None },
+            { key: 'tesseract', label: R.Settings_Global_OCRProvider_Tesseract },
+            { key: 'openai-vision', label: R.Settings_Global_OCRProvider_OpenAIVision },
+            { key: 'gemini-vision', label: R.Settings_Global_OCRProvider_GeminiVision },
+            { key: 'google-vision', label: R.Settings_Global_OCRProvider_GoogleVision },
+        ),
+        new Choice(
+            Key.OCRLanguage,
+            R.Settings_Global_OCRLanguage,
+            R.Settings_Global_OCRLanguageInfo,
+            'auto',
+            { key: 'auto', label: R.Settings_Global_OCRLanguage },
+            { key: 'ja', label: R.Settings_Global_OCRLanguage },
+            { key: 'ko', label: R.Settings_Global_OCRLanguage },
+            { key: 'zh', label: R.Settings_Global_OCRLanguage },
+        ),
+        new Choice(
+            Key.OCROverlay,
+            R.Settings_Global_OCROverlay,
+            R.Settings_Global_OCROverlayInfo,
+            'bubble',
+            { key: 'bubble', label: R.Settings_Global_OCROverlay },
+            { key: 'none', label: R.Settings_Global_OCROverlay },
         ),
     );
 }

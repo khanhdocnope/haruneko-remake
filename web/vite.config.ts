@@ -82,6 +82,7 @@ export default defineConfig({
         outDir: 'build',
         chunkSizeWarningLimit: 2 * 1024,
         rolldownOptions: {
+            external: ['tesseract.js'],
             input: {
                 index: './index.html',
                 sw: './src/service-worker.ts',
