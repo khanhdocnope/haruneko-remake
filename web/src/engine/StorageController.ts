@@ -7,6 +7,7 @@ export const enum Store {
     TagManager = 'CustomTags',
     MediaLists = 'MediaLists',
     DownloadedMedia = 'DownloadedMedia',
+    TranslationCache = 'TranslationCache',
 }
 
 export type StorageWatchCallback = (store: Store, key?: string) => void;

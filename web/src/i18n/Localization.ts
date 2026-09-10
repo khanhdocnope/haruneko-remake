@@ -1,4 +1,4 @@
-import { type ILocale, type LocaleID, type VariantResource, VariantResourceKey, InvariantResourceKey } from './ILocale';
+import { type ILocale, LocaleID, type VariantResource, VariantResourceKey, InvariantResourceKey } from './ILocale';
 import type { Choice } from '../engine/SettingsManager';
 import { Scope, Key } from '../engine/SettingsGlobal';
 import { invariant } from './locales/_invariant';
@@ -13,6 +13,7 @@ import id_ID from './locales/id_ID';
 import pt_PT from './locales/pt_PT';
 import th_TH from './locales/th_TH';
 import tr_TR from './locales/tr_TR';
+import vi_VN from './locales/vi_VN';
 import zh_CN from './locales/zh_CN';
 import crowdinPseudoLanguage from './locales/zu_ZA';
 
@@ -32,6 +33,7 @@ const resources: Record<LocaleID, ILocale> = {
     Locale_ptPT: CreateLocale(pt_PT),
     Locale_thTH: CreateLocale(th_TH),
     Locale_trTR: CreateLocale(tr_TR),
+    Locale_viVN: CreateLocale(vi_VN),
     Locale_zhCN: CreateLocale(zh_CN),
 };
 
@@ -64,13 +66,24 @@ export function CreateLocale(resource: VariantResource): ILocale {
  * Search the localized resource for the given language code.
  * If no language code is given, it is determined from the global settings.
  */
+function DetectDefaultLocale(): LocaleID {
+    try {
+        const nav = navigator.language?.toLowerCase() ?? '';
+        if (nav.startsWith('vi')) return LocaleID.Locale_viVN;
+    } catch { /* ignore */ }
+    return LocaleID.Locale_enUS;
+}
+
 export function GetLocale(code?: LocaleID): ILocale {
     if(code) {
-        return resources[code];
+        return resources[code] ?? resources[DetectDefaultLocale()];
     }
     if(HakuNeko?.FeatureFlags?.CrowdinTranslationMode?.Value) {
         return crowdinPseudoResource;
     }
-    const active = HakuNeko.SettingsManager.OpenScope(Scope).Get<Choice>(Key.Language).Value as LocaleID;
-    return resources[active];
+    try {
+        const stored = HakuNeko?.SettingsManager?.OpenScope(Scope)?.Get<Choice>(Key.Language)?.Value as LocaleID;
+        if (stored && resources[stored]) return resources[stored];
+    } catch { /* fallback to detection */ }
+    return resources[DetectDefaultLocale()];
 }

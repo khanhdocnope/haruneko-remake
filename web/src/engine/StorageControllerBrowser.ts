@@ -35,6 +35,12 @@ const VersionUpgrades = [
             db.createObjectStore(Store.DownloadedMedia);
         }
     },
+    // V6 => V7
+    function V7(db: IDBDatabase) {
+        if (!db.objectStoreNames.contains(Store.TranslationCache)) {
+            db.createObjectStore(Store.TranslationCache);
+        }
+    },
 ];
 
 const Version = VersionUpgrades.length;

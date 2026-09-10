@@ -32,6 +32,11 @@ export const enum Key {
     SyncInterval = 'sync-interval',
     SyncEncryption = 'sync-encryption',
     SyncPassphrase = 'sync-passphrase',
+    AIProvider = 'ai-provider',
+    AIModel = 'ai-model',
+    AIKey = 'ai-key',
+    AITargetLanguage = 'ai-target-language',
+    AIAutoTranslate = 'ai-autotranslate',
 }
 
 export async function Initialize(settingsManager: SettingsManager, frontends: IFrontendInfo[]): Promise<void> {
@@ -50,7 +55,7 @@ export async function Initialize(settingsManager: SettingsManager, frontends: IF
             Key.Language,
             R.Settings_Global_Language,
             R.Settings_Global_LanguageInfo,
-            LocaleID.Locale_enUS,
+            typeof navigator !== 'undefined' && navigator.language?.toLowerCase().startsWith('vi') ? LocaleID.Locale_viVN : LocaleID.Locale_enUS,
             ...Object.entries(LocaleID).map(([key, label]) => {
                 return { key, label };
             })
@@ -190,6 +195,43 @@ export async function Initialize(settingsManager: SettingsManager, frontends: IF
             R.Settings_Global_SyncPassphrase,
             R.Settings_Global_SyncPassphraseInfo,
             ''
+        ),
+        new Choice(
+            Key.AIProvider,
+            R.Settings_Global_AIProvider,
+            R.Settings_Global_AIProviderInfo,
+            'none',
+            { key: 'none', label: R.Settings_Global_AIProvider_None },
+            { key: 'openai', label: R.Settings_Global_AIProvider_OpenAI },
+            { key: 'gemini', label: R.Settings_Global_AIProvider_Gemini },
+            { key: 'deepl', label: R.Settings_Global_AIProvider_DeepL },
+            { key: 'google', label: R.Settings_Global_AIProvider_Google },
+        ),
+        new Text(
+            Key.AIModel,
+            R.Settings_Global_AIModel,
+            R.Settings_Global_AIModelInfo,
+            'gpt-4o-mini'
+        ),
+        new Secret(
+            Key.AIKey,
+            R.Settings_Global_AIKey,
+            R.Settings_Global_AIKeyInfo,
+            ''
+        ),
+        new Choice(
+            Key.AITargetLanguage,
+            R.Settings_Global_AITargetLanguage,
+            R.Settings_Global_AITargetLanguageInfo,
+            'vi',
+            { key: 'vi', label: R.Settings_Global_AITargetLanguage },
+            { key: 'en', label: R.Settings_Global_AITargetLanguage },
+        ),
+        new Check(
+            Key.AIAutoTranslate,
+            R.Settings_Global_AIAutoTranslate,
+            R.Settings_Global_AIAutoTranslateInfo,
+            false
         ),
     );
 }

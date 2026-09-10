@@ -15,6 +15,7 @@ import { CreateRemoteProcedureCallContract } from './platform/RemoteProcedureCal
 import type { IFrontendInfo } from '../frontend/IFrontend';
 import { Observable } from './Observable';
 import { SyncManager } from './platform/Sync/SyncManager';
+import { AITranslator } from './platform/AI/AITranslator';
 
 export class HakuNeko {
 
@@ -26,6 +27,7 @@ export class HakuNeko {
     readonly #itemflagManager: ItemflagManager;
     readonly #downloadManager: DownloadManager;
     readonly #syncManager: SyncManager;
+    readonly #aiTranslator: AITranslator;
     readonly #pastedClipboardURL = new Observable<URL>(null);
 
     constructor() {
@@ -37,6 +39,7 @@ export class HakuNeko {
         this.#itemflagManager = new ItemflagManager(this.#storageController);
         this.#downloadManager = new DownloadManager(this.#storageController);
         this.#syncManager = new SyncManager(this.#storageController, this.#settingsManager.OpenScope());
+        this.#aiTranslator = new AITranslator(this.#storageController, this.#settingsManager.OpenScope());
         SetupFetchProvider(this.#featureFlags);
     }
 
@@ -84,6 +87,10 @@ export class HakuNeko {
 
     public get SyncManager(): SyncManager {
         return this.#syncManager;
+    }
+
+    public get AITranslator(): AITranslator {
+        return this.#aiTranslator;
     }
 
     public get PastedClipboardURL(): Observable<URL> {

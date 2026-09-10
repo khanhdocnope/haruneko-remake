@@ -12,5 +12,6 @@ export const invariant: InvariantResource = {
   Locale_ptPT: '🇵🇹 Português (PT)',
   Locale_thTH: '🇹🇭 ไทย (TH)',
   Locale_trTR: '🇹🇷 Türkçe (TR)',
+  Locale_viVN: '🇻🇳 Tiếng Việt (VN)',
   Locale_zhCN: '🇨🇳 中文 (中国)',
 };

@@ -23,6 +23,7 @@ export enum LocaleID {
     Locale_ptPT = 'Locale_ptPT',
     Locale_thTH = 'Locale_thTH',
     Locale_trTR = 'Locale_trTR',
+    Locale_viVN = 'Locale_viVN',
     Locale_zhCN = 'Locale_zhCN',
 }
 
@@ -340,6 +341,22 @@ export enum EngineResourceKey {
     Settings_Global_SyncEncryptionInfo = 'Settings_Global_SyncEncryptionInfo',
     Settings_Global_SyncPassphrase = 'Settings_Global_SyncPassphrase',
     Settings_Global_SyncPassphraseInfo = 'Settings_Global_SyncPassphraseInfo',
+
+    Settings_Global_AIProvider = 'Settings_Global_AIProvider',
+    Settings_Global_AIProviderInfo = 'Settings_Global_AIProviderInfo',
+    Settings_Global_AIProvider_None = 'Settings_Global_AIProvider_None',
+    Settings_Global_AIProvider_OpenAI = 'Settings_Global_AIProvider_OpenAI',
+    Settings_Global_AIProvider_Gemini = 'Settings_Global_AIProvider_Gemini',
+    Settings_Global_AIProvider_DeepL = 'Settings_Global_AIProvider_DeepL',
+    Settings_Global_AIProvider_Google = 'Settings_Global_AIProvider_Google',
+    Settings_Global_AIModel = 'Settings_Global_AIModel',
+    Settings_Global_AIModelInfo = 'Settings_Global_AIModelInfo',
+    Settings_Global_AIKey = 'Settings_Global_AIKey',
+    Settings_Global_AIKeyInfo = 'Settings_Global_AIKeyInfo',
+    Settings_Global_AITargetLanguage = 'Settings_Global_AITargetLanguage',
+    Settings_Global_AITargetLanguageInfo = 'Settings_Global_AITargetLanguageInfo',
+    Settings_Global_AIAutoTranslate = 'Settings_Global_AIAutoTranslate',
+    Settings_Global_AIAutoTranslateInfo = 'Settings_Global_AIAutoTranslateInfo',
 
     Settings_FeatureFlags_Label = 'Settings_FeatureFlags_Label',
     Settings_FeatureFlags_Description = 'Settings_FeatureFlags_Description',
