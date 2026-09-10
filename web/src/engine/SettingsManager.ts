@@ -175,6 +175,10 @@ export class Choice extends Setting<string> {
         this.options = options;
     }
 
+    public UpdateOptions(...options: IOption[]): void {
+        this.options = options;
+    }
+
     private NormalizeValue(value: string) {
         return this.options.some(option => option.key === value) ? value : super.Default;
     }
@@ -187,7 +191,7 @@ export class Choice extends Setting<string> {
         super.Value = this.NormalizeValue(value);
     }
 
-    private readonly options: IOption[];
+    private options: IOption[];
     public get Options(): IOption[] {
         return this.options;
     }
@@ -276,6 +280,9 @@ class Settings implements Iterable<ISetting> {
                 }
                 setting.Subscribe(this.SaveAllSettings.bind(this));
                 this.settings[setting.ID] = setting;
+            } else if(this.settings[setting.ID] instanceof Choice && setting instanceof Choice) {
+                // Migrate Choice options (e.g., new Language vi_VN added after DB created)
+                (this.settings[setting.ID] as Choice).UpdateOptions(...(setting as Choice).Options);
             }
         }
         // TODO: Can this just be ignored with a `Promise.resolve()` instead of raising an error?
