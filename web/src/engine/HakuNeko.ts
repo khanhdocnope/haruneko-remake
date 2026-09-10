@@ -45,6 +45,10 @@ export class HakuNeko {
         SetupFetchProvider(this.#featureFlags);
     }
 
+    public async Initialize(frontends: IFrontendInfo[]): Promise<void> {
+        return this.Initialze(frontends);
+    }
+
     public async Initialze(frontends: IFrontendInfo[]): Promise<void> {
         await CreateBloatGuard().Initialize();
         await this.FeatureFlags.Initialize();
@@ -55,7 +59,7 @@ export class HakuNeko {
         this.#syncManager.Initialize().catch(e => console.warn('[HakuNeko] Sync init failed', e));
         // Preload bookmarks flags to show content to view
         const checkNewContent = this.SettingsManager.OpenScope().Get<Check>(GlobalKey.CheckNewContent).Value ;
-        if (checkNewContent) this.BookmarkPlugin.RefreshAllFlags();
+        if (checkNewContent) this.BookmarkPlugin.RefreshAllFlags().catch(e => console.warn('[HakuNeko] Refresh flags failed', e));
 
     }
 

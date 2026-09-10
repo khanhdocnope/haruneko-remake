@@ -56,16 +56,17 @@ export class OpenAIVisionProvider implements IVisionProvider {
     }
 
     private async ToBase64(blob: Blob): Promise<string> {
-        const buffer = await blob.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        for (const b of bytes) binary += String.fromCharCode(b);
-        return `data:${blob.type || 'image/jpeg'};base64,${btoa(binary)}`;
+        return new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(blob);
+        });
     }
 
     private ParseBoxes(content: string): OCRBox[] {
         try {
-            const json = content.match(/\[.*\]/s)?.[0] ?? '[]';
+            const json = content.match(/\[[\s\S]*?\]/)?.[0] ?? '[]';
             const arr = JSON.parse(json) as { text: string; translated: string; x: number; y: number; width: number; height: number }[];
             return arr.map(e => ({
                 text: e.translated || e.text,

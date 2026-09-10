@@ -16,20 +16,38 @@
     }
 
     let { page, alt, wide, onLoad }: Props = $props();
-    let dataload: Promise<Blob> = $derived(page.Fetch(Priority.High, new AbortController().signal));
-    let image: HTMLImageElement = $state();
+    let abortCtrl: AbortController | undefined = $state(undefined);
+    let image: HTMLImageElement = $state(undefined);
+    let objectUrl: string | undefined = $state(undefined);
     let ocrBoxes: OCRBox[] = $state([]);
     let translating = $state(false);
     let ocrError: string | null = $state(null);
 
+    function LoadPage(target: MediaItem) {
+        abortCtrl?.abort();
+        abortCtrl = new AbortController();
+        ocrBoxes = [];
+        ocrError = null;
+        if (objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+            objectUrl = undefined;
+        }
+        return target.Fetch(Priority.High, abortCtrl.signal).then(blob => {
+            const url = URL.createObjectURL(blob);
+            objectUrl = url;
+            return blob;
+        });
+    }
+
+    let dataload: Promise<Blob> = $derived(LoadPage(page));
+
     $effect(() => {
-        dataload.then(() => onLoad?.());
+        dataload.then(() => onLoad?.()).catch(() => {});
     });
 
     onDestroy(() => {
-        dataload.then((_src) => {
-            URL.revokeObjectURL(image?.src);
-        });
+        abortCtrl?.abort();
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
     });
 
     function downloadImage(data: Blob) {
@@ -42,32 +60,53 @@
         URL.revokeObjectURL(url);
     }
 
-    function copyImage(data: Blob) {
-        const png = data.type === 'image/png' ? data : new Promise<Blob>((resolve, reject) => {
-            const canvas = document.createElement('canvas');
-            canvas.width = image.naturalWidth;
-            canvas.height = image.naturalHeight;
-            canvas.getContext('2d')?.drawImage(image, 0, 0);
-            canvas.toBlob((blob) => {
-                if (blob) {
-                    resolve(blob);
-                } else {
-                    reject(new Error('Unable to copy image'));
-                }
-            }, 'image/png');
-        });
-        return navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+    async function copyImage(data: Blob) {
+        try {
+            if (!image) throw new Error('Image not loaded');
+            await image.decode().catch(() => {});
+            if (image.naturalWidth === 0) throw new Error('Image not ready');
+            const png = data.type === 'image/png' ? data : await new Promise<Blob>((resolve, reject) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = image.naturalWidth;
+                canvas.height = image.naturalHeight;
+                canvas.getContext('2d')?.drawImage(image, 0, 0);
+                canvas.toBlob((blob) => {
+                    if (blob) resolve(blob);
+                    else reject(new Error('Unable to copy image'));
+                }, 'image/png');
+            });
+            await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]);
+        } catch (e) {
+            console.warn('Copy failed', e);
+        }
     }
 
     async function TranslateImage(blob: Blob) {
         translating = true;
         ocrError = null;
         try {
-            // @ts-ignore HakuNeko global
             const orch = window.HakuNeko?.TranslationOrchestrator ?? window.HakuNeko?.AITranslator;
             if (!orch) throw new Error('Translator not ready');
             if (!orch.IsOCREnabled()) throw new Error('Chọn OCR Provider trong Cài đặt trước');
-            ocrBoxes = await orch.RecognizeAndTranslateImage(blob, 'vi');
+            const boxes = await orch.RecognizeAndTranslateImage(blob, 'vi');
+            // Normalize coordinates: Tesseract returns absolute px, Vision returns 0-1000 relative
+            const isRelative = boxes.every(b => b.x <= 1000 && b.y <= 1000 && b.width <= 1000 && b.height <= 1000);
+            if (isRelative) {
+                ocrBoxes = boxes;
+            } else if (image) {
+                await image.decode().catch(() => {});
+                const w = image.naturalWidth || 1000;
+                const h = image.naturalHeight || 1000;
+                ocrBoxes = boxes.map(b => ({
+                    ...b,
+                    x: b.x / w * 1000,
+                    y: b.y / h * 1000,
+                    width: b.width / w * 1000,
+                    height: b.height / h * 1000,
+                }));
+            } else {
+                ocrBoxes = boxes;
+            }
             if (ocrBoxes.length === 0) ocrError = 'Không nhận diện được chữ';
         } catch (e) {
             ocrError = e instanceof Error ? e.message : String(e);
@@ -86,7 +125,7 @@
             <img
                 class="imgpreview"
                 alt={page ? alt : ''}
-                src={URL.createObjectURL(data)}
+                src={objectUrl}
                 class:wide={wide}
                 draggable="false"
                 bind:this={image}
@@ -101,11 +140,13 @@
                 {#if ocrError}<span class="ocr-error">{ocrError}</span>{/if}
             </div>
         </div>
-        <ContextMenu target={[image]}>
-            <ContextMenuOption icon={Save} labelText="Save image" onclick={() => downloadImage(data)} />
-            <ContextMenuOption icon={Copy} labelText="Copy image" onclick={() => copyImage(data)} />
-            <ContextMenuOption icon={TranslateIcon} labelText="Dịch ảnh (VI)" onclick={() => TranslateImage(data)} />
-        </ContextMenu>
+        {#if image}
+            <ContextMenu target={[image]}>
+                <ContextMenuOption icon={Save} labelText="Save image" onclick={() => downloadImage(data)} />
+                <ContextMenuOption icon={Copy} labelText="Copy image" onclick={() => copyImage(data)} />
+                <ContextMenuOption icon={TranslateIcon} labelText="Dịch ảnh (VI)" onclick={() => TranslateImage(data)} />
+            </ContextMenu>
+        {/if}
     {:else}
         <InlineLoading
             class="imgpreview center"

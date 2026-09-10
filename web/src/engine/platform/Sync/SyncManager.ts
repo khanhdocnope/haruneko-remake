@@ -42,6 +42,15 @@ export class SyncManager {
         return null;
     }
 
+    private RefreshProvider(): void {
+        this.provider = this.GetProviderFromSettings();
+    }
+
+    private OnOnline = () => this.Sync().catch(console.warn);
+    private OnMessage = (e: MessageEvent) => {
+        if (e.data?.type === 'SYNC_REQUESTED') this.Sync().catch(console.warn);
+    };
+
     public async Initialize(): Promise<void> {
         this.provider = this.GetProviderFromSettings();
 
@@ -56,28 +65,33 @@ export class SyncManager {
 
         // Listen for SW background sync
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.addEventListener('message', (e: MessageEvent) => {
-                if (e.data?.type === 'SYNC_REQUESTED') this.Sync().catch(console.warn);
-            });
+            navigator.serviceWorker.removeEventListener('message', this.OnMessage as EventListener);
+            navigator.serviceWorker.addEventListener('message', this.OnMessage as EventListener);
         }
-        window.addEventListener('online', () => this.Sync().catch(console.warn));
+        window.removeEventListener('online', this.OnOnline);
+        window.addEventListener('online', this.OnOnline);
 
         // Initial pull if online and provider configured
         if (this.provider && navigator.onLine) {
             await this.Sync().catch(console.warn);
         }
 
-        // React to settings changes (provider switch)
+        // React to settings changes (provider + creds)
         try {
-            this.settings.Get<Choice>('sync-provider')?.Subscribe(() => {
-                this.provider = this.GetProviderFromSettings();
-            });
+            const refresh = () => this.RefreshProvider();
+            this.settings.Get<Choice>('sync-provider')?.Subscribe(refresh);
+            this.settings.Get<Secret>('sync-token')?.Subscribe(refresh);
+            this.settings.Get<Text>('sync-webdav-url')?.Subscribe(refresh);
+            this.settings.Get<Text>('sync-webdav-user')?.Subscribe(refresh);
+            this.settings.Get<Secret>('sync-webdav-pass')?.Subscribe(refresh);
         } catch { /* ignore */ }
     }
 
     public Destroy(): void {
         this.unwatch?.();
         if (this.debounceTimer) clearTimeout(this.debounceTimer);
+        if ('serviceWorker' in navigator) navigator.serviceWorker.removeEventListener('message', this.OnMessage as EventListener);
+        window.removeEventListener('online', this.OnOnline);
     }
 
     public GetStatus(): SyncStatus {
@@ -86,9 +100,10 @@ export class SyncManager {
 
     private SchedulePush(): void {
         if (!this.provider) return;
-        const auto = this.settings.Get<Check>('sync-auto')?.Value ?? true;
+        let auto = true;
+        try { auto = this.settings.Get<Check>('sync-auto')?.Value ?? true; } catch { /* ignore */ }
         if (!auto) {
-            localStorage.setItem(SYNC_PENDING_KEY, '1');
+            try { localStorage.setItem(SYNC_PENDING_KEY, '1'); } catch { /* ignore */ }
             return;
         }
         if (this.debounceTimer) clearTimeout(this.debounceTimer);
@@ -116,27 +131,32 @@ export class SyncManager {
 
             const localRev = this.GetLocalRevision();
             let conflicts = 0;
+            let pulled = false;
 
             // Remote newer → merge into local
             if (remoteSnapshot.revision > localRev) {
                 conflicts = await this.MergeRemoteToLocal(remoteSnapshot, localSnapshot);
                 this.SetLocalRevision(remoteSnapshot.revision);
+                pulled = true;
             }
 
-            // Local has newer changes → push
-            const newLocal = await this.BuildLocalSnapshot();
-            if (newLocal.revision > remoteSnapshot.revision || conflicts > 0 || localStorage.getItem(SYNC_PENDING_KEY)) {
-                newLocal.revision = Math.max(newLocal.revision, remoteSnapshot.revision) + 1;
-                newLocal.timestamp = Date.now();
-                await this.provider.Push(newLocal);
-                this.SetLocalRevision(newLocal.revision);
-                localStorage.removeItem(SYNC_PENDING_KEY);
+            // Check if local has pending changes (compare stored revision vs remote)
+            const pendingKey = (() => { try { return localStorage.getItem(SYNC_PENDING_KEY); } catch { return null; } })();
+            const hasLocalChanges = localSnapshot.revision > remoteSnapshot.revision;
+            if (hasLocalChanges || pulled || pendingKey) {
+                // Rebuild only if we pulled (to include merged data), otherwise reuse localSnapshot
+                const toPush = pulled ? await this.BuildLocalSnapshot() : localSnapshot;
+                toPush.revision = Math.max(toPush.revision, remoteSnapshot.revision) + 1;
+                toPush.timestamp = Date.now();
+                await this.provider.Push(toPush);
+                this.SetLocalRevision(toPush.revision);
+                try { localStorage.removeItem(SYNC_PENDING_KEY); } catch { /* ignore */ }
                 this.status = 'idle';
-                return { pushed: true, pulled: conflicts > 0, conflicts };
+                return { pushed: true, pulled, conflicts };
             }
 
             this.status = 'idle';
-            return { pushed: false, pulled: conflicts > 0, conflicts };
+            return { pushed: false, pulled, conflicts };
         } catch (e) {
             this.status = 'error';
             console.warn('[Sync] failed', e);
@@ -155,11 +175,11 @@ export class SyncManager {
     }
 
     private GetLocalRevision(): number {
-        return parseInt(localStorage.getItem(SYNC_REVISION_KEY) ?? '0', 10) || 0;
+        try { return parseInt(localStorage.getItem(SYNC_REVISION_KEY) ?? '0', 10) || 0; } catch { return 0; }
     }
 
     private SetLocalRevision(rev: number): void {
-        localStorage.setItem(SYNC_REVISION_KEY, String(rev));
+        try { localStorage.setItem(SYNC_REVISION_KEY, String(rev)); } catch { /* ignore */ }
     }
 
     /**
@@ -189,13 +209,22 @@ export class SyncManager {
     }
 
     private MergeBookmarks(local: unknown[], remote: unknown[]): { result: unknown[]; conflicts: number } {
-        const keyOf = (e: unknown) => (e as { StorageKey?: string; Media?: { ProviderID: string; EntryID: string } })?.StorageKey
-            ?? `${(e as { Media?: { ProviderID: string; EntryID: string } })?.Media?.ProviderID}:${(e as { Media?: { ProviderID: string; EntryID: string } })?.Media?.EntryID}`;
+        const keyOf = (e: unknown) => {
+            const sk = (e as { StorageKey?: string })?.StorageKey;
+            if (sk) return sk;
+            const m = (e as { Media?: { ProviderID: string; EntryID: string } })?.Media;
+            if (m?.ProviderID && m?.EntryID) return `${m.ProviderID}:${m.EntryID}`;
+            return `invalid:${crypto.randomUUID?.() ?? Math.random().toString(36).slice(2)}`;
+        };
         const map = new Map<string, unknown>();
-        for (const e of local) map.set(keyOf(e), e);
+        for (const e of local) {
+            const k = keyOf(e);
+            if (!k.startsWith('invalid:')) map.set(k, e);
+        }
         let conflicts = 0;
         for (const e of remote) {
             const k = keyOf(e);
+            if (k.startsWith('invalid:')) continue;
             if (!map.has(k)) map.set(k, e);
             else conflicts++;
         }

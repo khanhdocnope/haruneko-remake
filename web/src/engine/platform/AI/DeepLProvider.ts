@@ -24,7 +24,10 @@ export class DeepLProvider implements IAITranslationProvider {
     }
 
     public async Translate(text: string, options: TranslateOptions): Promise<string> {
-        const target = options.targetLang.toUpperCase() === 'VI' ? 'VI' : options.targetLang.toUpperCase();
+        const rawTarget = options.targetLang.toUpperCase();
+        const target = rawTarget === 'VI' ? 'VI' : rawTarget.split('-')[0];
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
         const res = await fetch('https://api-free.deepl.com/v2/translate', {
             method: 'POST',
             headers: {
@@ -32,7 +35,9 @@ export class DeepLProvider implements IAITranslationProvider {
                 Authorization: `DeepL-Auth-Key ${this.config.apiKey}`,
             },
             body: JSON.stringify({ text: [text], target_lang: target }),
+            signal: controller.signal,
         });
+        clearTimeout(timeout);
         if (!res.ok) throw new Error(`DeepL translate failed: ${res.status} ${await res.text()}`);
         const data = await res.json() as { translations: { text: string }[] };
         return data.translations[0]?.text ?? text;

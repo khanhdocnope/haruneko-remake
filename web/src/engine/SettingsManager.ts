@@ -26,6 +26,25 @@ async function DeriveKey(passphrase: string): Promise<CryptoKey> {
     );
 }
 
+function EncodeBase64Unicode(str: string): string {
+    const bytes = new TextEncoder().encode(str);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(binary);
+}
+
+function DecodeBase64Unicode(b64: string): string {
+    const binary = atob(b64);
+    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+}
+
+function EncodeBytesBase64(bytes: Uint8Array): string {
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(binary);
+}
+
 async function EncryptAESGCM(plain: string, passphrase: string): Promise<string> {
     try {
         const key = await DeriveKey(passphrase);
@@ -35,15 +54,15 @@ async function EncryptAESGCM(plain: string, passphrase: string): Promise<string>
         const combined = new Uint8Array(iv.length + cipher.byteLength);
         combined.set(iv, 0);
         combined.set(new Uint8Array(cipher), iv.length);
-        return 'v1:' + btoa(String.fromCharCode(...combined));
+        return 'v1:' + EncodeBytesBase64(combined);
     } catch {
-        return btoa(plain);
+        return EncodeBase64Unicode(plain);
     }
 }
 
 async function DecryptAESGCM(encrypted: string, passphrase: string): Promise<string> {
     try {
-        if (!encrypted.startsWith('v1:')) return atob(encrypted);
+        if (!encrypted.startsWith('v1:')) return DecodeBase64Unicode(encrypted);
         const raw = encrypted.slice(3);
         const bytes = Uint8Array.from(atob(raw), c => c.charCodeAt(0));
         const iv = bytes.slice(0, SYNC_CRYPTO_IV_LEN);
@@ -52,32 +71,29 @@ async function DecryptAESGCM(encrypted: string, passphrase: string): Promise<str
         const plain = await crypto.subtle.decrypt({ name: 'AES-GCM', iv }, key, data);
         return new TextDecoder().decode(plain);
     } catch {
-        try { return atob(encrypted); } catch { return encrypted; }
+        try { return DecodeBase64Unicode(encrypted); } catch { return encrypted; }
     }
 }
 
 function Encrypt(decrypted: string) {
-    // Sync path: encryption is async, so Secret falls back to btoa for sync Serialize.
-    // Async encryption is handled via EncryptSecretAsync helper.
-    return btoa(decrypted);
+    return EncodeBase64Unicode(decrypted);
 }
 
 function Decrypt(encrypted: string) {
     if (encrypted.startsWith('v1:')) {
-        // Cannot decrypt sync without passphrase here; return as-is for lazy decrypt
         return encrypted;
     }
-    return atob(encrypted);
+    try { return DecodeBase64Unicode(encrypted); } catch { return encrypted; }
 }
 
 export async function EncryptSecretAsync(plain: string, passphrase?: string): Promise<string> {
     if (passphrase) return EncryptAESGCM(plain, passphrase);
-    return btoa(plain);
+    return EncodeBase64Unicode(plain);
 }
 
 export async function DecryptSecretAsync(encrypted: string, passphrase?: string): Promise<string> {
     if (encrypted.startsWith('v1:')) return DecryptAESGCM(encrypted, passphrase ?? '');
-    try { return atob(encrypted); } catch { return encrypted; }
+    try { return DecodeBase64Unicode(encrypted); } catch { return encrypted; }
 }
 
 export type IValue = string | boolean | number | FileSystemDirectoryHandle;
@@ -256,15 +272,19 @@ class Settings implements Iterable<ISetting> {
     constructor(private readonly scope: string, private readonly storage: StorageController) {
     }
 
+    private saveDebounce: ReturnType<typeof setTimeout> | undefined;
     /**
      * Notify subscribers and store the current values of all settings to the persistent storage.
      */
     private async SaveAllSettings() {
-        const data: Record<string, IValue> = {};
-        for(const key in this.settings) {
-            data[key] = this.settings[key].Serialize();
-        }
-        await this.storage.SavePersistent(data, Store.Settings, this.scope);
+        if (this.saveDebounce) clearTimeout(this.saveDebounce);
+        this.saveDebounce = setTimeout(async () => {
+            const data: Record<string, IValue> = {};
+            for (const key of Object.keys(this.settings)) {
+                data[key] = this.settings[key].Serialize();
+            }
+            await this.storage.SavePersistent(data, Store.Settings, this.scope);
+        }, 50);
     }
 
     /**
@@ -293,7 +313,9 @@ class Settings implements Iterable<ISetting> {
      * Get the setting for a certain key.
      */
     public Get<T extends ISetting>(key: string): T {
-        return this.settings[key] as T;
+        const setting = this.settings[key] as T | undefined;
+        if (!setting) throw new Exception(R.SettingsManager_Settings_AlreadyInitializedError, key);
+        return setting;
     }
 
     *[Symbol.iterator]()/*: Iterator<ISetting>*/ {

@@ -61,7 +61,7 @@ export function SanitizeFileName(name: string): string {
     return name
         .replace(invalidControlCharactersPattern, '')
         .replace(invalidFormatCharactersPattern, '')
-        .replace(/./g, innvalidFilenameCharactersReplacer)
+        .replace(/[<>:"/\\|?*~]/g, innvalidFilenameCharactersReplacer)
         .replace(/\s+$/, '')
         .trim()
         .replace(/\.+$/, ({ length }) => '․'.repeat(length)) // Must not end with a `.` dot

@@ -35,6 +35,8 @@ export class OpenAIProvider implements IAITranslationProvider {
 
     public async Translate(text: string, options: TranslateOptions): Promise<string> {
         const prompt = `Translate the following text to ${options.targetLang}. Keep proper nouns (character names, place names) unchanged. Only return the translated text without explanation.\n\nContext: ${options.context ?? 'manga/anime UI'}\nText: ${text}`;
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 15000);
         const res = await fetch(`${this.BaseURL}/chat/completions`, {
             method: 'POST',
             headers: {
@@ -46,7 +48,9 @@ export class OpenAIProvider implements IAITranslationProvider {
                 messages: [{ role: 'user', content: prompt }],
                 temperature: 0.3,
             }),
+            signal: controller.signal,
         });
+        clearTimeout(timeout);
         if (!res.ok) throw new Error(`OpenAI translate failed: ${res.status} ${await res.text()}`);
         const data = await res.json() as { choices: { message: { content: string } }[] };
         return data.choices[0]?.message?.content?.trim() ?? text;

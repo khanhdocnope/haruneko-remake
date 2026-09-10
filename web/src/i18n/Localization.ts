@@ -42,11 +42,7 @@ const crowdinPseudoResource = CreateLocale(crowdinPseudoLanguage);
 function Format(this: string, ...params: string[]) {
     let text = this.toString();
     for(const index in params) {
-        text = text.replace(`{${index}}`, params[index]);
-        /*
-        const regex = new RegExpSafe(`\\{${index}\\}`, 'g');
-        text = text.replace(regex, params[index]);
-        */
+        text = text.replaceAll(`{${index}}`, params[index]);
     }
     return text;
 }
@@ -68,8 +64,16 @@ export function CreateLocale(resource: VariantResource): ILocale {
  */
 function DetectDefaultLocale(): LocaleID {
     try {
-        const nav = navigator.language?.toLowerCase() ?? '';
-        if (nav.startsWith('vi')) return LocaleID.Locale_viVN;
+        const nav = (navigator.language ?? '').toLowerCase();
+        if (nav === 'vi' || nav.startsWith('vi-')) return LocaleID.Locale_viVN;
+        if (nav === 'ja' || nav.startsWith('ja-')) return LocaleID.Locale_enUS;
+        if (nav === 'de' || nav.startsWith('de-')) return LocaleID.Locale_deDE;
+        if (nav === 'fr' || nav.startsWith('fr-')) return LocaleID.Locale_frFR;
+        if (nav === 'ar' || nav.startsWith('ar-')) return LocaleID.Locale_arSA;
+        if (nav === 'es' || nav.startsWith('es-')) return LocaleID.Locale_esES;
+        if (nav === 'th' || nav.startsWith('th-')) return LocaleID.Locale_thTH;
+        if (nav === 'tr' || nav.startsWith('tr-')) return LocaleID.Locale_trTR;
+        if (nav === 'zh' || nav.startsWith('zh-')) return LocaleID.Locale_zhCN;
     } catch { /* ignore */ }
     return LocaleID.Locale_enUS;
 }

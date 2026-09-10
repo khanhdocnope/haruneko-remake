@@ -16,18 +16,9 @@ export class GoogleVisionProvider implements IVisionProvider {
         return true;
     }
 
-    public async RecognizeAndTranslate(blob: Blob, targetLang: string): Promise<OCRBox[]> {
-        // Step 1: OCR via Google Vision (or free translate.googleapis if no key)
-        // For free tier without key, we mock single box covering center with translated placeholder
+    public async RecognizeAndTranslate(blob: Blob, _targetLang: string): Promise<OCRBox[]> {
         if (!this._config.apiKey) {
-            return [{
-                text: `[Dịch ${targetLang} cần API key]`,
-                x: 300,
-                y: 400,
-                width: 400,
-                height: 120,
-                confidence: 0.5,
-            }];
+            throw new Error('Google Vision cần API key trong Cài đặt');
         }
         const base64 = await this.ToBase64Pure(blob);
         const res = await fetch(`https://vision.googleapis.com/v1/images:annotate?key=${this._config.apiKey}`, {
@@ -60,10 +51,14 @@ export class GoogleVisionProvider implements IVisionProvider {
     }
 
     private async ToBase64Pure(blob: Blob): Promise<string> {
-        const buffer = await blob.arrayBuffer();
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        for (const b of bytes) binary += String.fromCharCode(b);
-        return btoa(binary);
+        return new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+                const result = reader.result as string;
+                resolve(result.split(',')[1] ?? '');
+            };
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(blob);
+        });
     }
 }

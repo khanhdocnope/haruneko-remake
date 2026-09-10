@@ -20,8 +20,10 @@ export class OfflineReader {
         const keys: string[] = [];
         for (const blob of blobs) {
             const data = await blob.arrayBuffer();
-            const key = `offline-${entry.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-            await this.storage.SavePersistent(data, Store.DownloadedMedia, key);
+            const mime = blob.type || 'image/jpeg';
+            const uuid = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+            const key = `offline-${entry.id}-${uuid}`;
+            await this.storage.SavePersistent({ data, mime }, Store.DownloadedMedia, key);
             keys.push(key);
         }
         await this.storage.SavePersistent({ ...entry, blobs: keys }, Store.DownloadedMedia, entry.id);
@@ -32,15 +34,19 @@ export class OfflineReader {
         if (!entry) return undefined;
         const blobs: Blob[] = [];
         for (const key of entry.blobs) {
-            const data = await this.storage.LoadPersistent<ArrayBuffer>(Store.DownloadedMedia, key);
-            if (data) blobs.push(new Blob([data]));
+            const stored = await this.storage.LoadPersistent<{ data: ArrayBuffer; mime: string } | ArrayBuffer>(Store.DownloadedMedia, key);
+            if (stored) {
+                if (stored instanceof ArrayBuffer) blobs.push(new Blob([stored]));
+                else if ((stored as { data: ArrayBuffer }).data) blobs.push(new Blob([(stored as { data: ArrayBuffer }).data], { type: (stored as { mime: string }).mime }));
+            }
         }
         return { entry, blobs };
     }
 
     public async ListOfflineMedia(): Promise<OfflineMediaEntry[]> {
-        const all = await this.storage.LoadPersistent<OfflineMediaEntry[]>(Store.DownloadedMedia);
-        return Array.isArray(all) ? all : [];
+        const all = await this.storage.LoadPersistent<Record<string, OfflineMediaEntry>>(Store.DownloadedMedia);
+        if (!all || typeof all !== 'object') return [];
+        return Object.values(all).filter(v => v && typeof v === 'object' && 'id' in v) as OfflineMediaEntry[];
     }
 
     public async RemoveOfflineMedia(id: string): Promise<void> {

@@ -47,49 +47,59 @@ export class DownloadTask {
      * @throws {@link RangeError} if the media entries are empty
      */
     private AssertMediaEntries() {
-        new Array(this.Media.Entries.Value.length - 1);
+        if (this.Media.Entries.Value.length === 0) throw new RangeError('Media entries empty');
     }
+
+    private runningLock = false;
 
     public async Run(/* Target Directory / Archive ? */): Promise<void> {
 
-        if(this.IsRunning) {
+        if(this.IsRunning || this.runningLock) {
             return;
         }
+        this.runningLock = true;
         this.errors.Value = [];
         this.status.Value = Status.Downloading;
         this.UpdateProgress(0);
 
         const resourcemap = new Map<number, string>();
+        let runError: unknown = undefined;
         try {
             const cancellator = new AbortController();
             this.Abort = cancellator.abort.bind(cancellator);
             await this.Media.Update();
             this.AssertMediaEntries();
-            const promises = this.Media.Entries.Value.map(async (item, index: number) => {
-                try {
-                    const data = await item.Fetch(Priority.Low, cancellator.signal);
-                    const resource = await this.storageController.SaveTemporary(data);
-                    resourcemap.set(index, resource);
-                    this.UpdateProgress(resourcemap.size);
-                } catch(error) {
-                    this.errors.Push(error instanceof Error ? error : new Error(error?.toString()));
-                    // TODO: Abort all other pending downloads or keep running?
-                    throw error;
-                }
-            });
-            await Promise.allSettled(promises);
+            const concurrency = 5;
+            const entries = this.Media.Entries.Value;
+            for (let i = 0; i < entries.length; i += concurrency) {
+                if (cancellator.signal.aborted) break;
+                const chunk = entries.slice(i, i + concurrency);
+                const promises = chunk.map(async (item, offset) => {
+                    const index = i + offset;
+                    try {
+                        const data = await item.Fetch(Priority.Low, cancellator.signal);
+                        const resource = await this.storageController.SaveTemporary(data);
+                        resourcemap.set(index, resource);
+                        this.UpdateProgress(resourcemap.size);
+                    } catch(error) {
+                        this.errors.Push(error instanceof Error ? error : new Error(error?.toString()));
+                    }
+                });
+                await Promise.all(promises);
+            }
             if(this.errors.Value.length === 0) {
-                this.UpdateProgress(-1 * this.Media.Entries.Value.length);
                 this.status.Value = Status.Processing;
                 await this.Media.Store(resourcemap);
             }
         } catch(error) {
-            this.errors.Push(error instanceof Error ? error : new Error(error.toString()));
+            runError = error;
+            this.errors.Push(error instanceof Error ? error : new Error((error as unknown)?.toString()));
         } finally {
-            await this.storageController.RemoveTemporary(...resourcemap.values());
-            this.UpdateProgress(resourcemap.size);
+            if (resourcemap.size > 0) await this.storageController.RemoveTemporary(...resourcemap.values());
+            if (runError === undefined) this.UpdateProgress(resourcemap.size);
             this.status.Value = this.errors.Value.length > 0 ? Status.Failed : Status.Completed;
             this.Abort = this.DisabledAbort;
+            this.runningLock = false;
         }
     }
 

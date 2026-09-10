@@ -104,7 +104,7 @@ export async function Initialize(settingsManager: SettingsManager, frontends: IF
             Key.UserAgent,
             R.Settings_Global_UserAgent,
             R.Settings_Global_UserAgentInfo,
-            null
+            ''
         ),
         new Secret(
             Key.CaptchaToken,
@@ -136,7 +136,7 @@ export async function Initialize(settingsManager: SettingsManager, frontends: IF
             R.Settings_Global_RPCPortInfo,
             27544, 1024, 65535
         ),
-        new Text(
+        new Secret(
             Key.RPCSecret,
             R.Settings_Global_RPCSecret,
             R.Settings_Global_RPCSecretInfo,

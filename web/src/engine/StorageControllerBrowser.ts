@@ -61,7 +61,7 @@ export class StorageControllerBrowser implements StorageController {
     private revisions = new Map<Store, number>();
 
     constructor() {
-        navigator.storage.persist().catch(console.warn);
+        try { navigator.storage?.persist()?.catch(console.warn); } catch { /* ignore */ }
     }
 
     public Watch(callback: StorageWatchCallback): () => void {
@@ -84,13 +84,14 @@ export class StorageControllerBrowser implements StorageController {
         const connection = indexedDB.open(DataBase, Version);
         return new Promise<IDBDatabase>((resolve, reject) => {
             connection.onupgradeneeded = (event: IDBVersionChangeEvent) => {
-                const db = connection.result; // => event.target.result
-                for(let version = event.oldVersion; version < event.newVersion; version++) {
-                    VersionUpgrades[version](db);
+                const db = (event.target as IDBOpenDBRequest).result ?? connection.result;
+                for(let version = event.oldVersion; version < (event.newVersion ?? Version); version++) {
+                    if (version < VersionUpgrades.length) VersionUpgrades[version](db);
                 }
             };
             connection.onsuccess = () => resolve(connection.result);
             connection.onerror = () => reject(connection.error);
+            connection.onblocked = () => console.warn('IDB blocked');
         });
     }
 
@@ -98,13 +99,15 @@ export class StorageControllerBrowser implements StorageController {
         const db = await this.Connect();
         const tx = db.transaction(store, 'readwrite');
         const bucket = tx.objectStore(store);
-        const queries = key ? [ bucket.put(value, key) ] : Object.keys(value).map(key => bucket.put(value[key], key));
+        const queries = key ? [ bucket.put(value, key) ] : Object.keys(value as object).map(k => bucket.put((value as Record<string, unknown>)[k], k));
         const promises = queries.map(query => new Promise<void>((resolve, reject) => {
-            query.onsuccess = () => resolve(/*query.result*/);
+            query.onsuccess = () => resolve();
             query.onerror = () => reject(query.error);
+            (query.transaction as IDBTransaction).onerror = () => reject(query.error);
         }));
         tx.oncomplete = () => db.close();
-        tx.commit();
+        tx.onerror = () => db.close();
+        if ('commit' in tx) (tx as unknown as { commit: () => void }).commit();
         await Promise.all(promises);
     }
 
@@ -112,27 +115,60 @@ export class StorageControllerBrowser implements StorageController {
         const db = await this.Connect();
         const tx = db.transaction(store, 'readonly');
         const bucket = tx.objectStore(store);
-        const query = key ? bucket.get(key) : bucket.getAll();
-        const promise = new Promise<T>((resolve, reject) => {
-            query.onsuccess = () => resolve(query.result as T);
-            query.onerror = () => reject(query.error);
-        });
-        tx.oncomplete = () => db.close();
-        tx.commit();
-        return promise;
+        if (key) {
+            const query = bucket.get(key);
+            const promise = new Promise<T>((resolve, reject) => {
+                query.onsuccess = () => resolve(query.result as T);
+                query.onerror = () => reject(query.error);
+            });
+            tx.oncomplete = () => db.close();
+            tx.onerror = () => db.close();
+            if ('commit' in tx) (tx as unknown as { commit: () => void }).commit();
+            return promise;
+        } else {
+            // Reconstruct Record from cursor to preserve keys
+            const promise = new Promise<T>((resolve, reject) => {
+                const result: Record<string, unknown> = {};
+                let hasKeys = false;
+                const cursorReq = bucket.openCursor();
+                cursorReq.onsuccess = () => {
+                    const cursor = cursorReq.result;
+                    if (cursor) {
+                        hasKeys = true;
+                        result[cursor.key as string] = cursor.value;
+                        cursor.continue();
+                    } else {
+                        if (hasKeys) resolve(result as T);
+                        else {
+                            // Fallback: getAll for stores without keys (e.g., legacy)
+                            const allReq = bucket.getAll();
+                            allReq.onsuccess = () => resolve(allReq.result as T);
+                            allReq.onerror = () => reject(allReq.error);
+                        }
+                    }
+                };
+                cursorReq.onerror = () => reject(cursorReq.error);
+            });
+            tx.oncomplete = () => db.close();
+            tx.onerror = () => db.close();
+            if ('commit' in tx) (tx as unknown as { commit: () => void }).commit();
+            return promise;
+        }
     }
 
     private async RemoveIDB(store: UnitedStore, ...keys: string[]): Promise<void> {
         const db = await this.Connect();
         const tx = db.transaction(store, 'readwrite');
         const bucket = tx.objectStore(store);
-        const queries = keys.length > 0 ? keys.map(key => bucket.delete(key)) : [ bucket.clear() ];
+        if (keys.length === 0) return;
+        const queries = keys.map(k => bucket.delete(k));
         const promises = queries.map(query => new Promise<void>((resolve, reject) => {
-            query.onsuccess = () => resolve(/*query.result*/);
+            query.onsuccess = () => resolve();
             query.onerror = () => reject(query.error);
         }));
         tx.oncomplete = () => db.close();
-        tx.commit();
+        tx.onerror = () => db.close();
+        if ('commit' in tx) (tx as unknown as { commit: () => void }).commit();
         await Promise.all(promises);
     }
 
@@ -147,11 +183,13 @@ export class StorageControllerBrowser implements StorageController {
 
     public async RemovePersistent(store: Store, ...keys: string[]): Promise<void> {
         await this.RemoveIDB(store, ...keys);
-        this.NotifyWatchers(store, keys[0]);
+        for (const k of keys) this.NotifyWatchers(store, k);
+        if (keys.length === 0) this.NotifyWatchers(store);
     }
 
     public async SaveTemporary<T>(value: T): Promise<string> {
-        const key = Date.now().toString() + Math.random().toString();
+        const uuid = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        const key = uuid;
         await this.SaveIDB(value, InternalStore.TemporaryData, key);
         return key;
     }

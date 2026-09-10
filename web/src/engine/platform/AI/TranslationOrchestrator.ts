@@ -33,6 +33,8 @@ export class TranslationOrchestrator {
     private memoryCache = new Map<string, CacheEntry>();
     private imageCache = new Map<string, { boxes: OCRBox[]; timestamp: number }>();
     private readonly cacheTTL = 30 * 24 * 60 * 60 * 1000;
+    private readonly maxMemoryEntries = 500;
+    private readonly maxImageEntries = 100;
 
     constructor(
         private readonly storage: StorageController,
@@ -89,10 +91,26 @@ export class TranslationOrchestrator {
         return `v2:ocr:${this.ocrProvider?.ID ?? this.visionProvider?.ID ?? 'none'}:${target}:${hash}`;
     }
 
+    private EvictIfNeeded(): void {
+        if (this.memoryCache.size > this.maxMemoryEntries) {
+            const first = this.memoryCache.keys().next().value;
+            if (first) this.memoryCache.delete(first);
+        }
+        if (this.imageCache.size > this.maxImageEntries) {
+            const first = this.imageCache.keys().next().value;
+            if (first) this.imageCache.delete(first);
+        }
+    }
+
     private async HashBlob(blob: Blob): Promise<string> {
-        const buf = await blob.arrayBuffer();
-        const hash = await crypto.subtle.digest('SHA-256', buf);
-        return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+        try {
+            if (typeof crypto === 'undefined' || !crypto.subtle) return `${blob.size}-${blob.type}`;
+            const buf = await blob.arrayBuffer();
+            const hash = await crypto.subtle.digest('SHA-256', buf);
+            return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 16);
+        } catch {
+            return `${blob.size}-${blob.type}`;
+        }
     }
 
     // — Text (unified, giữ API cũ) —
@@ -112,24 +130,35 @@ export class TranslationOrchestrator {
         }
 
         let translated: string;
+        let isFallback = false;
         try {
             translated = await this.textPool.Add(() => this.textProvider!.Translate(text, { targetLang: target, context }), Priority.Normal);
-        } catch {
-            // Fallback to Google free
+        } catch (e) {
+            console.warn('[Translate] primary failed, fallback Google', e);
+            isFallback = true;
             try {
                 translated = await new GoogleProvider().Translate(text, { targetLang: target, context });
             } catch {
                 return text;
             }
         }
-
-        this.memoryCache.set(key, { translated, timestamp: Date.now() });
-        await this.storage.SavePersistent(translated, Store.TranslationCache, key).catch(() => {});
+        if (!isFallback) {
+            this.memoryCache.set(key, { translated, timestamp: Date.now() });
+            this.EvictIfNeeded();
+            await this.storage.SavePersistent(translated, Store.TranslationCache, key).catch(() => {});
+        }
         return translated;
     }
 
     public async TranslateBatch(texts: string[], targetLang?: string, context?: string): Promise<string[]> {
-        return Promise.all(texts.map(t => this.Translate(t, targetLang, context)));
+        const concurrency = 3;
+        const results: string[] = [];
+        for (let i = 0; i < texts.length; i += concurrency) {
+            const chunk = texts.slice(i, i + concurrency);
+            const translated = await Promise.all(chunk.map(t => this.Translate(t, targetLang, context)));
+            results.push(...translated);
+        }
+        return results;
     }
 
     // — Image OCR/Vision (manual per-page, bong bóng che chữ gốc, auto lang, vi đích) —
@@ -161,6 +190,7 @@ export class TranslationOrchestrator {
         }
 
         this.imageCache.set(key, { boxes, timestamp: Date.now() });
+        this.EvictIfNeeded();
         await this.storage.SavePersistent(boxes, Store.ImageOCRCache, key).catch(() => {});
         return boxes;
     }

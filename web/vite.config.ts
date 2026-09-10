@@ -88,14 +88,15 @@ export default defineConfig({
                 sw: './src/service-worker.ts',
             },
             output: {
-                entryFileNames: file => file.name === 'sw' ? '[name].js' : `${buildID}/[name].js`,
+                entryFileNames: file => file.name === 'sw' || file.name === 'service-worker' ? '[name].js' : `${buildID}/[name].js`,
                 assetFileNames: `${buildID}/[name].[ext]`,
                 chunkFileNames: `${buildID}/[name].js`,
                 manualChunks: (id) => {
                     if(id.includes('node_modules')) {
                         return 'Vendor';
                     }
-                    if(/\/web\/src\/engine\/websites\//.test(id) && /\/[a-zA-Z0-9_-]+\.webp$/.test(id)) {
+                    const normalized = id.replace(/\\/g, '/');
+                    if(/\/web\/src\/engine\/websites\//.test(normalized) && /\/[a-zA-Z0-9_-]+\.webp$/.test(normalized)) {
                         return 'WebsiteIcons';
                     }
                 },
