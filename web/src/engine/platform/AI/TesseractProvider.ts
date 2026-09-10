@@ -13,7 +13,9 @@ export class TesseractProvider implements IOCRProvider {
         // Lazy import to avoid bundling when not installed; fallback if missing
         let createWorker: (langs: string, oem?: number) => Promise<{ recognize: (blob: Blob) => Promise<{ data: { words: { text: string; bbox: { x0: number; y0: number; x1: number; y1: number }; confidence: number }[] } }>; terminate: () => Promise<void> }>;
         try {
-            ({ createWorker } = await import('tesseract.js' as string) as unknown as { createWorker: typeof createWorker });
+            const spec = 'tesseract' + '.js';
+            const mod = await import(/* @vite-ignore */ spec as string);
+            createWorker = (mod as unknown as { createWorker: typeof createWorker }).createWorker;
         } catch {
             throw new Error('Tesseract.js chưa cài (npm i tesseract.js) — chọn Vision provider khác');
         }
