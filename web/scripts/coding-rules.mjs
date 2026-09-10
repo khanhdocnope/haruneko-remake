@@ -12,6 +12,7 @@ await (async function check() {
     const restrictedSourceFilesWithChanges = (stdout.split('\n') ?? [])
         .filter(line => /locales\/[a-z]{2,3}_[A-Z]{2,3}\.ts/.test(line))
         .filter(line => !line.includes('en_US.ts'))
+        .filter(line => !line.includes('vi_VN.ts'))
         .map(line => `- ${line}`);
     let exitCode = 0;
     if(restrictedSourceFilesWithChanges.length > 0) {
