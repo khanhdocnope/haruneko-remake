@@ -74,6 +74,7 @@ export default defineConfig({
         }),
     ],
     publicDir: 'static',
+    base: './',
     define: {
         BUILD_ID: JSON.stringify(buildID),
     },
