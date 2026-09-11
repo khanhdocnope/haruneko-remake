@@ -14,15 +14,19 @@
 
     let folder: LocalFolderHandle | null = $state(null);
     let chapter: LocalChapter | null = $state(null);
-    let busy = $state(false);
+    let busy: string | null = $state(null);
     let error: string | null = $state(null);
 
     async function OpenFolder() {
-        busy = true;
+        busy = 'Đang chờ chọn thư mục…';
         error = null;
         try {
             const picked = await PickLocalDirectory();
-            if (!picked) return; // user cancelled
+            if (!picked) {
+                busy = null;
+                return; // user cancelled
+            }
+            busy = `Đang đọc ${picked.files.length} ảnh…`;
             const local = new LocalChapter(`local:${picked.label}`, picked.label, picked.files);
             await local.Update();
             folder = picked;
@@ -30,7 +34,7 @@
         } catch (e) {
             error = e instanceof Error ? e.message : String(e);
         } finally {
-            busy = false;
+            busy = null;
         }
     }
 
@@ -56,7 +60,7 @@
             <span class="path">{folder.label} — {folder.files.length}</span>
         {/if}
         <span class="spacer"></span>
-        <Button size="small" icon={FolderIcon} disabled={busy} onclick={OpenFolder}>{L.Frontend_LocalFolder_Open()}</Button>
+        <Button size="small" icon={FolderIcon} disabled={!!busy} onclick={OpenFolder}>{L.Frontend_LocalFolder_Open()}</Button>
         {#if chapter}
             <Button size="small" kind="secondary" icon={ViewIcon} onclick={View}>{L.Frontend_LocalFolder_View()}</Button>
             <Button size="small" kind="secondary" icon={TranslateIcon} onclick={Translate}>{L.Frontend_LocalFolder_Translate()}</Button>
@@ -64,7 +68,7 @@
     </header>
 
     {#if busy}
-        <InlineLoading description={L.Frontend_LocalFolder_Open()} />
+        <InlineLoading description={busy} />
     {:else if error}
         <InlineNotification kind="error" title={error} hideCloseButton />
     {:else if !chapter}

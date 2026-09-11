@@ -45,20 +45,33 @@ function DecodeBase64(base64: string): Uint8Array<ArrayBuffer> {
     return bytes;
 }
 
+function WithTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`${label} treo quá ${ms / 1000}s — thử lại`)), ms);
+    });
+    return Promise.race([promise, timeout]).finally(() => { if (timer) clearTimeout(timer); }) as Promise<T>;
+}
+
 async function PickNativeDirectory(): Promise<LocalFolderHandle | null> {
     const { GetIPC } = await import('./electron/InterProcessCommunication');
     const { Channels } = await import('../../../../app/electron/src/ipc/InterProcessCommunicationChannels');
     const ipc = GetIPC();
+    try {
+        await WithTimeout(ipc.Invoke(Channels.LocalFolder.Ping), 5000, 'Kết nối exe');
+    } catch {
+        throw new Error('Bản exe này quá cũ (thiếu LocalFolder). Hãy tải lại bản nightly mới từ tag nightly.');
+    }
     const dir = await ipc.Invoke(Channels.LocalFolder.OpenDialog);
     if (!dir) return null;
-    const entries = await ipc.Invoke(Channels.LocalFolder.ListDirectory, dir);
+    const entries = await WithTimeout(ipc.Invoke(Channels.LocalFolder.ListDirectory, dir), 30000, 'Đọc thư mục');
     const files: LocalImageFile[] = entries
         .filter(entry => IsImageFileName(entry.name))
         .map(entry => ({
             name: entry.name,
             size: entry.size,
             read: async () => {
-                const data = await ipc.Invoke(Channels.LocalFolder.ReadFile, dir, entry.name);
+                const data = await WithTimeout(ipc.Invoke(Channels.LocalFolder.ReadFile, dir, entry.name), 30000, `Đọc file ${entry.name}`);
                 return new Blob([DecodeBase64(data.base64)], { type: data.mime });
             },
         }));
@@ -66,7 +79,7 @@ async function PickNativeDirectory(): Promise<LocalFolderHandle | null> {
         label: dir,
         files,
         readSidecar: async () => {
-            const raw = await ipc.Invoke(Channels.LocalFolder.ReadSidecar, dir);
+            const raw = await WithTimeout(ipc.Invoke(Channels.LocalFolder.ReadSidecar, dir), 5000, 'Đọc sidecar');
             if (!raw) return null;
             try {
                 return JSON.parse(raw) as Record<string, OCRBox[]>;
@@ -75,7 +88,7 @@ async function PickNativeDirectory(): Promise<LocalFolderHandle | null> {
             }
         },
         writeSidecar: async (data) => {
-            await ipc.Invoke(Channels.LocalFolder.WriteSidecar, dir, JSON.stringify(data));
+            await WithTimeout(ipc.Invoke(Channels.LocalFolder.WriteSidecar, dir, JSON.stringify(data)), 5000, 'Ghi sidecar');
         },
     };
 }

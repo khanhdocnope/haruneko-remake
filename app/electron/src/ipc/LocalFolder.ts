@@ -35,11 +35,16 @@ export type LocalFileData = {
 export class LocalFolder {
 
     constructor(private readonly ipc: IPC) {
+        this.ipc.Handle(Channels.LocalFolder.Ping, this.Ping.bind(this));
         this.ipc.Handle(Channels.LocalFolder.OpenDialog, this.OpenDialog.bind(this));
         this.ipc.Handle(Channels.LocalFolder.ListDirectory, this.ListDirectory.bind(this));
         this.ipc.Handle(Channels.LocalFolder.ReadFile, this.ReadFile.bind(this));
         this.ipc.Handle(Channels.LocalFolder.ReadSidecar, this.ReadSidecar.bind(this));
         this.ipc.Handle(Channels.LocalFolder.WriteSidecar, this.WriteSidecar.bind(this));
+    }
+
+    private async Ping(): Promise<string> {
+        return 'ok';
     }
 
     private async OpenDialog(): Promise<string | null> {

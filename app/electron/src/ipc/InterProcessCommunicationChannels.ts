@@ -49,6 +49,7 @@ export namespace Channels {
      * Supported IPC Channels for browsing local folders on disk.
      */
     export enum LocalFolder {
+        Ping = 'LocalFolder::Ping',
         OpenDialog = 'LocalFolder::OpenDialog',
         ListDirectory = 'LocalFolder::ListDirectory',
         ReadFile = 'LocalFolder::ReadFile',
