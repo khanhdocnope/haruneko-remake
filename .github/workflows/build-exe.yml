@@ -5,6 +5,9 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-exe:
     name: Build Windows EXE
@@ -43,3 +46,58 @@ jobs:
           retention-days: 7
           path: app/electron/bundle/*.zip
           if-no-files-found: error
+
+      - name: Build date
+        shell: pwsh
+        run: echo "BUILD_DATE=$(Get-Date -Format 'yyyy-MM-dd HH:mm')" >> $env:GITHUB_ENV
+
+      - name: Publish to nightly tag
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: nightly
+          name: 🌙 Nightly ${{ env.BUILD_DATE }} — HakuNeko Windows offline
+          prerelease: true
+          generate_release_notes: false
+          files: app/electron/bundle/*.zip
+          body: |
+            # 🌙 HakuNeko Nightly — Windows offline
+
+            [![Build EXE](https://github.com/khanhdocnope/haruneko-remake/actions/workflows/build-exe.yml/badge.svg)](https://github.com/khanhdocnope/haruneko-remake/actions/workflows/build-exe.yml)
+            ![Downloads](https://img.shields.io/github/downloads/khanhdocnope/haruneko-remake/total?label=t%E1%BA%A3i%20v%E1%BB%81&logo=github)
+
+            > 🕒 **Tự động build từ nhánh `main` mỗi khi có code mới — luôn là bản mới nhất.**
+            > Build từ commit [`${{ github.sha }}`](https://github.com/khanhdocnope/haruneko-remake/commit/${{ github.sha }})
+
+            ---
+
+            ## ⬇️ Tải nhanh
+
+            | Máy của bạn | Tải file nào trong mục **Assets** bên dưới |
+            |---|---|
+            | 🖥️ Windows 64-bit (đa số) | `hakuneko-electron-*-win32-x64.zip` |
+            | 💻 Windows ARM (Surface, Snapdragon) | `hakuneko-electron-*-win32-arm64.zip` |
+
+            ## ▶️ Cách chạy (3 bước)
+
+            1. **Tải** file `.zip` phù hợp ở mục **Assets** bên dưới
+            2. **Giải nén** ra 1 thư mục (chuột phải → Extract All)
+            3. Chạy **`hakuneko.exe`** — không cần cài đặt
+
+            ## ✨ Bản này có gì
+
+            - 🇻🇳 **Tiếng Việt đầy đủ** — mở app là tự nhận `vi`, đổi ở `Settings → Language`
+            - 🤖 **AI dịch** tên truyện + giao diện (OpenAI / Gemini / DeepL / Google, tự nhập key)
+            - 🫧 **Dịch chữ trong ảnh** — nút **Dịch ảnh** từng trang, bong bóng trắng che chữ gốc
+            - 📴 **Chạy offline 100%** — web đã đóng gói sẵn trong `.exe`, không cần mạng để mở app
+            - 🔄 Đồng bộ bookmark qua GitHub Gist / WebDAV (mã hóa AES-GCM)
+            - 📲 PWA + đọc truyện đã tải khi mất mạng
+
+            ## 📖 Mới dùng lần đầu?
+
+            Đọc **[Hướng dẫn 5 phút](https://github.com/khanhdocnope/haruneko-remake/blob/main/docs/user-manual/usage/bat-dau-su-dung.md)** — chỉ cách tìm truyện, tải về, dịch sang tiếng Việt.
+
+            ## ⚠️ Lưu ý
+
+            - Bản portable: dữ liệu nằm trong thư mục **`userdata`** cạnh file `.exe` — chép cả thư mục này khi chuyển máy là giữ nguyên bookmark + cài đặt
+            - Lần đầu Windows SmartScreen có thể chặn → bấm **More info → Run anyway** (file do chính repo này build, mã nguồn mở ở trên)
+            - Muốn bản ổn định thay vì nightly? Xem [danh sách tag](https://github.com/khanhdocnope/haruneko-remake/tags)

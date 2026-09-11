@@ -4,6 +4,11 @@
 
 [![Build EXE](https://github.com/khanhdocnope/haruneko-remake/actions/workflows/build-exe.yml/badge.svg)](https://github.com/khanhdocnope/haruneko-remake/actions)
 [![Crowdin](https://badges.crowdin.net/hakuneko/localized.svg)](https://crowdin.com/project/hakuneko)
+![Downloads](https://img.shields.io/github/downloads/khanhdocnope/haruneko-remake/total?label=t%E1%BA%A3i%20v%E1%BB%81&logo=github)
+
+## ⬇️ Tải nhanh (Windows .exe offline)
+
+> 👉 **[Tải bản mới nhất tại đây](https://github.com/khanhdocnope/haruneko-remake/releases/tag/nightly)** — mở link, kéo xuống **Assets**, tải file `hakuneko-electron-*-win32-x64.zip`, giải nén, chạy `hakuneko.exe`. Không cần cài đặt, có sẵn Tiếng Việt + AI dịch + offline.
 
 ---
 
