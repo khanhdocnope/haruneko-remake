@@ -310,7 +310,11 @@ export abstract class FetchProvider {
             });
 
             invocations.push({ name: 'Open', info: `Request URL: ${request.url}` });
-            win.Open(request, this.featureFlags.VerboseFetchWindow.Value, preload);
+            win.Open(request, this.featureFlags.VerboseFetchWindow.Value, preload).catch(async error => {
+                ClearTimeout(await cancellation);
+                await destroy();
+                reject(error instanceof Error ? error : new Exception(R.FetchProvider_FetchWindow_TimeoutError));
+            });
         });
     }
 }

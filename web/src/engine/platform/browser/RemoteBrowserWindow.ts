@@ -12,8 +12,8 @@ export default class RemoteBrowserWindowBrowser implements IRemoteBrowserWindow 
     private readonly beforeFrame = new Observable<URL, IRemoteBrowserWindow>(undefined, this);
     public get BeforeFrameNavigate() { return this.beforeFrame; }
 
-    public async Open(_request: Request, _show: boolean, _preload: string): Promise<void> {
-        throw new Error('RemoteBrowserWindow not supported in browser - use direct fetch');
+    public async Open(request: Request, _show: boolean, _preload: string): Promise<void> {
+        throw new Error(`Bản web không mở được cửa sổ ẩn cho ${new URL(request.url).hostname}. Site này cần render JS — hãy dùng bản .exe offline để đọc.`);
     }
     public async Close(): Promise<void> {}
     public async Show(): Promise<void> {}
