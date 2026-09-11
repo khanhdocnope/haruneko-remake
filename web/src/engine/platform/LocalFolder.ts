@@ -32,6 +32,8 @@ export type LocalFolderHandle = {
 
 export function IsNativeLocalFolder(): boolean {
     try {
+        if (typeof window !== 'undefined' && (window as unknown as { ipcRenderer?: unknown }).ipcRenderer) return true;
+        if (typeof globalThis !== 'undefined' && (globalThis as unknown as { ipcRenderer?: unknown }).ipcRenderer) return true;
         return new PlatformInfo().Runtime === Runtime.Electron;
     } catch {
         return false;

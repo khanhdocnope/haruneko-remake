@@ -21,11 +21,14 @@
     import EditableBubble from '../viewer/EditableBubble.svelte';
 
     const L = GlobalSettings.Locale;
-    const orch = window.HakuNeko?.TranslationOrchestrator;
+    function GetOrch() {
+        return window.HakuNeko?.TranslationOrchestrator ?? window.HakuNeko?.AITranslator;
+    }
 
     // Re-evaluated whenever the wizard changes settings.
     let setupTick = $state(0);
-    let ocrReady = $derived(setupTick >= 0 && (orch?.IsOCREnabled() ?? false));
+    let orchReady = $derived(GetOrch()?.IsOCREnabled() ?? false);
+    let ocrReady = $derived(setupTick >= 0 && orchReady);
 
     // ---- center image ----
     let centerUrl: string | undefined = $state(undefined);
@@ -129,7 +132,7 @@
         wizStatus = 'idle';
         try {
             ApplyWizardSettings();
-            wizStatus = (await orch?.TestOCR()) ? 'ok' : 'fail';
+            wizStatus = (await GetOrch()?.TestOCR()) ? 'ok' : 'fail';
         } catch {
             wizStatus = 'fail';
         } finally {

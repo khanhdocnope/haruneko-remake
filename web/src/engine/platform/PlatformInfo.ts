@@ -31,6 +31,13 @@ export class PlatformInfo {
             return;
         }
 
+        // Must check Electron first: its renderer also has `process` and `chrome` in UA
+        if(globalThis?.ipcRenderer || (typeof window !== 'undefined' && (window as unknown as { ipcRenderer?: unknown }).ipcRenderer)) {
+            this.OS = this.DetectSystemBrowser(ua);
+            this.Runtime = Runtime.Electron;
+            return;
+        }
+
         if(typeof globalThis?.process === 'object') {
             if(typeof globalThis?.nw?.Window === 'object') {
                 this.OS = this.DetectSystemBrowser(ua);
@@ -41,12 +48,6 @@ export class PlatformInfo {
                 this.Runtime = Runtime.Node;
                 return;
             }
-        }
-
-        if(globalThis?.ipcRenderer) {
-            this.OS = this.DetectSystemBrowser(ua);
-            this.Runtime = Runtime.Electron;
-            return;
         }
 
         if(/Chrome\/\d+/.test(ua)) {
