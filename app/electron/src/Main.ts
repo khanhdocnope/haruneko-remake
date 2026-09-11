@@ -1,6 +1,5 @@
 import path from 'path';
 import fs from 'fs/promises';
-import { pathToFileURL } from 'node:url';
 import { app, dialog } from 'electron';
 import { Command } from 'commander';
 import { IPC } from './ipc/InterProcessCommunication';
