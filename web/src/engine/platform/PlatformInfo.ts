@@ -32,7 +32,7 @@ export class PlatformInfo {
         }
 
         // Must check Electron first: its renderer also has `process` and `chrome` in UA
-        if(globalThis?.ipcRenderer || (typeof window !== 'undefined' && (window as unknown as { ipcRenderer?: unknown }).ipcRenderer)) {
+        if(globalThis?.ipcRenderer || typeof window !== 'undefined' && (window as unknown as { ipcRenderer?: unknown }).ipcRenderer) {
             this.OS = this.DetectSystemBrowser(ua);
             this.Runtime = Runtime.Electron;
             return;
