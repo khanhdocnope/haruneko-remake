@@ -54,14 +54,22 @@ Dành cho người chỉ muốn đọc / tải truyện, không cần biết cod
 3. **Ngôn ngữ đích:** để `vi`.
 4. **Tự động dịch:** để TẮT cho đỡ tốn, khi nào cần thì bấm nút Dịch.
 
-### Dịch chữ trong ảnh
+### Dịch chữ trong ảnh (tab Dịch riêng)
 
-1. Vào **Cài đặt → OCR** → chọn **Gemini Vision** hoặc **OpenAI Vision** → nhập key của bạn.
-   Chưa có key thì chọn **Google** cũng được.
-2. Mở 1 trang truyện, bấm nút **Dịch ảnh** ở góc phải dưới ảnh.
-3. Đợi vài giây, chữ nước ngoài sẽ hiện bong bóng trắng đè lên bằng Tiếng Việt.
+1. Mở **tab Dịch** ở menu trái (hình dịch thuật).
+2. Lần đầu nó hỏi cài đặt 1 phút: chọn **Gemini Vision** (khuyên dùng) hoặc **OpenAI Vision** → dán key → bấm **Thử kết nối** → **Xong**.
+   Chưa có key thì bấm **Dùng thử không cần key** để xem trước.
+3. Muốn dịch chương đang đọc: mở chương trong trình đọc → bấm nút **dịch thuật** trên thanh công cụ → chương tự nhảy sang tab Dịch.
+4. Trong tab Dịch: bấm **Dịch trang** (1 trang) hoặc **Dịch cả chương** (nó hỏi xác nhận trước vì tốn quota).
+5. Chữ nước ngoài hiện bong bóng trắng đè lên bằng Tiếng Việt. **Thấy dịch sai? Bấm thẳng vào chữ để sửa**, Enter là lưu, có nút ↺ để về bản AI.
 
-> Chỉ dịch khi bạn bấm nút, không tự trừ tiền key.
+> Chỉ dịch khi bạn bấm nút, không tự trừ tiền key. Bản sửa chỉ lưu trên máy này.
+
+### Đọc truyện trong thư mục máy (bản .exe)
+
+1. Mở **tab Thư mục máy** ở menu trái → bấm **Mở thư mục** → chọn thư mục chứa ảnh truyện.
+2. Bấm **Xem** để đọc như bình thường, bấm **Dịch** để đẩy sang tab Dịch.
+3. Bản dịch được lưu vào file `.hakuneko-translate.json` ngay cạnh thư mục — chép cả thư mục đi máy khác vẫn giữ.
 
 ## 8. Đồng bộ qua máy khác (không bắt buộc)
 

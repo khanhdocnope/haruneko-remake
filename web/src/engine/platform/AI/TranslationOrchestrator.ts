@@ -195,6 +195,36 @@ export class TranslationOrchestrator {
         return boxes;
     }
 
+    /**
+     * Return cached boxes for the image without calling any API.
+     * Used by the Translate tab to prefill already-translated pages.
+     */
+    public async GetCachedImageBoxes(blob: Blob, targetLang?: string): Promise<OCRBox[] | null> {
+        const target = targetLang ?? 'vi';
+        const hash = await this.HashBlob(blob);
+        const key = this.ImageCacheKey(hash, target);
+        const memImg = this.imageCache.get(key);
+        if (memImg && Date.now() - memImg.timestamp < this.cacheTTL) return memImg.boxes;
+        const cached = await this.storage.LoadPersistent<OCRBox[]>(Store.ImageOCRCache, key).catch(() => undefined);
+        if (cached) {
+            this.imageCache.set(key, { boxes: cached, timestamp: Date.now() });
+            return cached;
+        }
+        return null;
+    }
+
+    /**
+     * Persist (possibly user-edited) boxes for the image.
+     */
+    public async SaveImageBoxes(blob: Blob, boxes: OCRBox[], targetLang?: string): Promise<void> {
+        const target = targetLang ?? 'vi';
+        const hash = await this.HashBlob(blob);
+        const key = this.ImageCacheKey(hash, target);
+        this.imageCache.set(key, { boxes, timestamp: Date.now() });
+        this.EvictIfNeeded();
+        await this.storage.SavePersistent(boxes, Store.ImageOCRCache, key).catch(() => {});
+    }
+
     public async Test(): Promise<boolean> {
         if (this.textProvider) return this.textProvider.Test();
         if (this.visionProvider) return this.visionProvider.Test();

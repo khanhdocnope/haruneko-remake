@@ -46,6 +46,17 @@ export namespace Channels {
     };
 
     /**
+     * Supported IPC Channels for browsing local folders on disk.
+     */
+    export enum LocalFolder {
+        OpenDialog = 'LocalFolder::OpenDialog',
+        ListDirectory = 'LocalFolder::ListDirectory',
+        ReadFile = 'LocalFolder::ReadFile',
+        ReadSidecar = 'LocalFolder::ReadSidecar',
+        WriteSidecar = 'LocalFolder::WriteSidecar',
+    };
+
+    /**
      * Supported IPC Channels for managing the RPC service.
      */
     export enum RemoteProcedureCallManager {

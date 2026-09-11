@@ -51,6 +51,12 @@ export class IPC {
     // RemoteProcedureCallManager
     Handle(channel: Channels.RemoteProcedureCallManager.Stop, callback: () => Promise<void>): void;
     Handle(channel: Channels.RemoteProcedureCallManager.Restart, callback: (port: number, secret: string) => Promise<void>): void;
+    // LocalFolder
+    Handle(channel: Channels.LocalFolder.OpenDialog, callback: () => Promise<string | null>): void;
+    Handle(channel: Channels.LocalFolder.ListDirectory, callback: (dir: string) => Promise<{ name: string; size: number }[]>): void;
+    Handle(channel: Channels.LocalFolder.ReadFile, callback: (dir: string, name: string) => Promise<{ mime: string; base64: string }>): void;
+    Handle(channel: Channels.LocalFolder.ReadSidecar, callback: (dir: string) => Promise<string | null>): void;
+    Handle(channel: Channels.LocalFolder.WriteSidecar, callback: (dir: string, content: string) => Promise<void>): void;
 
     /**
      * Register a {@link callback} to handle a request from the _Render_ process via `ipcRenderer.invoke(channel, ...args)`.

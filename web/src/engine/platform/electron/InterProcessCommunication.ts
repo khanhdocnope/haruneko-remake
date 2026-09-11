@@ -58,6 +58,12 @@ class IPC {
     // RemoteProcedureCallManager
     Invoke(channel: Channels.RemoteProcedureCallManager.Stop): Promise<void>;
     Invoke(channel: Channels.RemoteProcedureCallManager.Restart, port: number, secret: string): Promise<void>;
+    // LocalFolder
+    Invoke(channel: Channels.LocalFolder.OpenDialog): Promise<string | null>;
+    Invoke(channel: Channels.LocalFolder.ListDirectory, dir: string): Promise<{ name: string; size: number }[]>;
+    Invoke(channel: Channels.LocalFolder.ReadFile, dir: string, name: string): Promise<{ mime: string; base64: string }>;
+    Invoke(channel: Channels.LocalFolder.ReadSidecar, dir: string): Promise<string | null>;
+    Invoke(channel: Channels.LocalFolder.WriteSidecar, dir: string, content: string): Promise<void>;
 
     /**
      * Send a request to the _Main_ process handled by `ipcMain.handle(channel, listener)`.

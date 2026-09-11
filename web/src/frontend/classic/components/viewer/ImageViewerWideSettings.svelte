@@ -14,6 +14,9 @@
     import ScreenMap from "carbon-icons-svelte/lib/ScreenMap.svelte";
     import ZoomIn from "carbon-icons-svelte/lib/ZoomIn.svelte";
     import ZoomOut from "carbon-icons-svelte/lib/ZoomOut.svelte";
+    import Translate from "carbon-icons-svelte/lib/Translate.svelte";
+    import { Store as UIStore } from "../../stores/Stores.svelte";
+    import { TranslateWorkspace } from "../../stores/TranslateWorkspace.svelte";
     import {
         ContentSwitcher,
         Switch,
@@ -96,6 +99,17 @@
             size="small"
             iconDescription="Increase spacing between images (CTRL ➕)"
             onclick={() => Settings.ViewerPadding.Increment()}
+            {hideTooltip}
+        />
+        <Button
+            icon={Translate}
+            iconDescription={GlobalSettings.Locale.Frontend_Viewer_OpenInTranslate()}
+            kind="ghost"
+            size="small"
+            onclick={() => {
+                TranslateWorkspace.OpenChapter(item);
+                UIStore.contentscreen = '/translate';
+            }}
             {hideTooltip}
         />
         <Button

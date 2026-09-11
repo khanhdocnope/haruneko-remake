@@ -207,6 +207,40 @@ export enum FrontendResourceKey {
     Frontend_Classic_StartupGuide_Viewer_Vertical_SubDescription = 'Frontend_Classic_StartupGuide_Viewer_Vertical_SubDescription',
 }
 
+// [SECTION]: Frontend: Translate Studio & Local Folder
+export enum FrontendResourceKey {
+    Frontend_Classic_Sidenav_Translate = 'Frontend_Classic_Sidenav_Translate',
+    Frontend_Classic_Sidenav_LocalFolder = 'Frontend_Classic_Sidenav_LocalFolder',
+    Frontend_Viewer_OpenInTranslate = 'Frontend_Viewer_OpenInTranslate',
+    Frontend_Translate_Title = 'Frontend_Translate_Title',
+    Frontend_Translate_Empty = 'Frontend_Translate_Empty',
+    Frontend_Translate_TranslatePage = 'Frontend_Translate_TranslatePage',
+    Frontend_Translate_TranslateAll = 'Frontend_Translate_TranslateAll',
+    Frontend_Translate_Translating = 'Frontend_Translate_Translating',
+    Frontend_Translate_Stop = 'Frontend_Translate_Stop',
+    Frontend_Translate_ResetAI = 'Frontend_Translate_ResetAI',
+    Frontend_Translate_ShowOriginal = 'Frontend_Translate_ShowOriginal',
+    Frontend_Translate_Edited = 'Frontend_Translate_Edited',
+    Frontend_Translate_Original = 'Frontend_Translate_Original',
+    Frontend_Translate_Translated = 'Frontend_Translate_Translated',
+    Frontend_Translate_ConfirmAll_Title = 'Frontend_Translate_ConfirmAll_Title',
+    Frontend_Translate_ConfirmAll_Body = 'Frontend_Translate_ConfirmAll_Body',
+    Frontend_Translate_Setup_Title = 'Frontend_Translate_Setup_Title',
+    Frontend_Translate_Setup_Provider = 'Frontend_Translate_Setup_Provider',
+    Frontend_Translate_Setup_Key = 'Frontend_Translate_Setup_Key',
+    Frontend_Translate_Setup_Test = 'Frontend_Translate_Setup_Test',
+    Frontend_Translate_Setup_Done = 'Frontend_Translate_Setup_Done',
+    Frontend_Translate_Setup_TryFree = 'Frontend_Translate_Setup_TryFree',
+    Frontend_Translate_Setup_NeedKey = 'Frontend_Translate_Setup_NeedKey',
+    Frontend_Translate_Setup_TestOK = 'Frontend_Translate_Setup_TestOK',
+    Frontend_Translate_Setup_TestFail = 'Frontend_Translate_Setup_TestFail',
+    Frontend_LocalFolder_Title = 'Frontend_LocalFolder_Title',
+    Frontend_LocalFolder_Open = 'Frontend_LocalFolder_Open',
+    Frontend_LocalFolder_Empty = 'Frontend_LocalFolder_Empty',
+    Frontend_LocalFolder_View = 'Frontend_LocalFolder_View',
+    Frontend_LocalFolder_Translate = 'Frontend_LocalFolder_Translate',
+}
+
 // [SECTION]: Frontend: FluentCore
 export enum FrontendResourceKey {
     Frontend_FluentCore_Label = 'Frontend_FluentCore_Label',

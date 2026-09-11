@@ -15,6 +15,8 @@
     import EventsAlt from 'carbon-icons-svelte/lib/EventsAlt.svelte';
     import Home from 'carbon-icons-svelte/lib/Home.svelte';
     import Image from 'carbon-icons-svelte/lib/Image.svelte';
+    import Translate from 'carbon-icons-svelte/lib/Translate.svelte';
+    import Folder from 'carbon-icons-svelte/lib/Folder.svelte';
     import ImportExport from 'carbon-icons-svelte/lib/ImportExport.svelte';
     import Information from 'carbon-icons-svelte/lib/Information.svelte';
     import Location from 'carbon-icons-svelte/lib/Location.svelte';
@@ -76,6 +78,22 @@
             icon={CopyLink}
             onclick={() =>
                 document.dispatchEvent(new Event('media-paste-url'))}
+        />
+        <SideNavLink
+            text={GlobalSettings.Locale.Frontend_Classic_Sidenav_Translate()}
+            icon={Translate}
+            onclick={() => {
+                UI.selectedItem = undefined;
+                UI.contentscreen = '/translate';
+            }}
+        />
+        <SideNavLink
+            text={GlobalSettings.Locale.Frontend_Classic_Sidenav_LocalFolder()}
+            icon={Folder}
+            onclick={() => {
+                UI.selectedItem = undefined;
+                UI.contentscreen = '/local';
+            }}
         />
         <SideNavLink
             text={GlobalSettings.Locale.Frontend_Plugins()}

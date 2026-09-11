@@ -8,6 +8,7 @@ import { FetchProvider } from './ipc/FetchProvider';
 import { InitializeMenu } from './Menu';
 import { BloatGuard } from './ipc/BloatGuard';
 import { RemoteBrowserWindowController } from './ipc/RemoteBrowserWindow';
+import { LocalFolder } from './ipc/LocalFolder';
 import { RPCServer } from '../../src/rpc/Server';
 import { RemoteProcedureCallManager } from './ipc/RemoteProcedureCallManager';
 import { RemoteProcedureCallContract } from './ipc/RemoteProcedureCallContract';
@@ -131,6 +132,7 @@ async function OpenWindow(): Promise<void> {
         new RemoteProcedureCallManager(rpc, ipc);
         new FetchProvider(ipc, win.webContents);
         new RemoteBrowserWindowController(ipc);
+        new LocalFolder(ipc);
         new BloatGuard(ipc, win.webContents);
         win.RegisterChannels(ipc);
 
