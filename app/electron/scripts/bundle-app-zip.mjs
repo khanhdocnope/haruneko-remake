@@ -31,6 +31,22 @@ async function bundleWeb(blinkDeploymentTemporaryDirectory) {
     try {
         await fs.access(webBuild);
         await fs.cp(webBuild, targetWeb, { recursive: true });
+        // Patch absolute paths "/" -> "./" for file:// offline (vite base "/" breaks file protocol)
+        const indexFile = path.join(targetWeb, 'index.html');
+        try {
+            let html = await fs.readFile(indexFile, 'utf-8');
+            const before = html;
+            html = html.replace(/href="\/manifest\.json"/g, 'href="./manifest.json"')
+                .replace(/href="\/favicon\.ico"/g, 'href="./favicon.ico"')
+                .replace(/href="\/index\.css"/g, 'href="./index.css"')
+                .replace(/src="\/MT/g, 'src="./MT')
+                .replace(/href="\/MT/g, 'href="./MT')
+                .replace(/src="\/sw\.js"/g, 'src="./sw.js"');
+            if (html !== before) {
+                await fs.writeFile(indexFile, html);
+                console.log('Patched web/index.html for file:// offline');
+            }
+        } catch (e) { console.warn('Patch index.html failed', e); }
         console.log('Bundled web/build -> resources/app/web');
     } catch {
         console.warn('web/build not found, skipping offline bundle (run npm run build --workspace=web first)');

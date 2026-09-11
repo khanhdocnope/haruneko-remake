@@ -1,7 +1,7 @@
 import path from 'path';
 import fs from 'fs/promises';
 import { pathToFileURL } from 'node:url';
-import { app } from 'electron';
+import { app, dialog } from 'electron';
 import { Command } from 'commander';
 import { IPC } from './ipc/InterProcessCommunication';
 import { ApplicationWindow } from './ipc/ApplicationWindow';
@@ -106,17 +106,26 @@ async function OpenWindow(): Promise<void> {
         app.userAgentFallback = manifest['user-agent'] ?? app.userAgentFallback.split(/\s+/).filter(segment => !/(hakuneko|electron)/i.test(segment)).join(' ');
         await app.whenReady();
         const win = await CreateApplicationWindow();
+        // Debug: show load errors instead of flash-quit
+        win.webContents.on('did-fail-load', (_e, code, desc, url) => {
+            console.error(`[Main] did-fail-load ${code} ${desc} ${url}`);
+            dialog.showErrorBox('Load failed', `${desc} (${code})\n${url}`);
+        });
         let origin = argv.origin ?? manifest.url;
-        // Offline bundle: if web/index.html exists locally, prefer file:// (đủ thay đổi như web)
+        let useFile = false;
+        let localWeb = '';
         if (!argv.origin) {
-            const localWeb = path.join(app.getAppPath(), 'web', 'index.html');
+            localWeb = path.join(app.getAppPath(), 'web', 'index.html');
             try {
                 await fs.access(localWeb);
-                origin = pathToFileURL(localWeb).href;
+                useFile = true;
             } catch { /* use manifest url */ }
         }
-        const uri = new URL(origin ?? 'about:blank');
-        UpdatePermissions(win.webContents.session, uri);
+        let uri: URL | null = null;
+        if (!useFile) {
+            uri = new URL(origin ?? 'about:blank');
+            UpdatePermissions(win.webContents.session, uri);
+        }
 
         const ipc = new IPC(win.webContents);
         const rpc = new RPCServer('/hakuneko', new RemoteProcedureCallContract(ipc, win.webContents));
@@ -126,10 +135,19 @@ async function OpenWindow(): Promise<void> {
         new BloatGuard(ipc, win.webContents);
         win.RegisterChannels(ipc);
 
-        await win.loadURL(uri.href).catch(error => console.warn(error));
+        if (useFile) {
+            await win.loadFile(localWeb).catch(error => {
+                console.warn(error);
+                dialog.showErrorBox('Load file failed', String(error));
+            });
+        } else {
+            await win.loadURL(uri!.href).catch(error => console.warn(error));
+        }
     } catch(error) {
         console.error(error);
-        app.quit();
+        try { dialog.showErrorBox('Startup failed', String(error)); } catch { /* ignore */ }
+        // Don't quit immediately — keep window to see error
+        setTimeout(() => app.quit(), 5000);
     }
 }
 

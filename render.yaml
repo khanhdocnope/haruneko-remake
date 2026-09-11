@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: haruneko
+    env: static
+    buildCommand: npm run npm:clean-install && npm run build --workspace=web
+    staticPublishPath: web/build
+    envVars:
+      - key: NODE_VERSION
+        value: 24.0.0
+      - key: NPM_CONFIG_ALLOW_GIT
+        value: true
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
